@@ -4,13 +4,18 @@ import path from 'path';
 import { readEnvFile } from './env.js';
 
 // Read config values from .env (falls back to process.env).
-const envConfig = readEnvFile(['ASSISTANT_NAME', 'ASSISTANT_HAS_OWN_NUMBER']);
+const envConfig = readEnvFile([
+  'ASSISTANT_NAME',
+  'ASSISTANT_HAS_OWN_NUMBER',
+  'ENABLE_WHATSAPP',
+]);
+const envDefaultsConfig = readEnvFile(['ASSISTANT_NAME', 'ENABLE_WHATSAPP'], '.env.defaults');
 
-export const ASSISTANT_NAME =
-  process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
-export const ASSISTANT_HAS_OWN_NUMBER =
-  (process.env.ASSISTANT_HAS_OWN_NUMBER ||
-    envConfig.ASSISTANT_HAS_OWN_NUMBER) === 'true';
+export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || envDefaultsConfig.ASSISTANT_NAME;
+export const ASSISTANT_HAS_OWN_NUMBER = (process.env.ASSISTANT_HAS_OWN_NUMBER || envConfig.ASSISTANT_HAS_OWN_NUMBER) === 'true';
+// Feature flags — .env overrides .env.defaults
+export const ENABLE_WHATSAPP = (process.env.ENABLE_WHATSAPP || envConfig.ENABLE_WHATSAPP || envDefaultsConfig.ENABLE_WHATSAPP) === 'true';
+
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 

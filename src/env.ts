@@ -2,28 +2,17 @@ import fs from 'fs';
 import path from 'path';
 import { logger } from './logger.js';
 
-/**
- * Parse the .env file and return values for the requested keys.
- * Does NOT load anything into process.env — callers decide what to
- * do with the values. This keeps secrets out of the process environment
- * so they don't leak to child processes.
- */
-export function readEnvFile(keys: string[]): Record<string, string> {
-  const envFile = path.join(process.cwd(), '.env');
-
-  let content: string | null = readFileContent(envFile);
-  if (!content) {
-    logger.debug('.env file is empty or missing, using defaults');
-    return {};
+function readFile(filePath: string): string | null {
+  try {
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return null;
   }
-
-  const result: Record<string, string> = extractEnvVariables(keys, content);
-  return result;
 }
 
-function extractEnvVariables(
-  keys: string[],
+function parseEnvContent(
   content: string,
+  keys: string[],
 ): Record<string, string> {
   const result: Record<string, string> = {};
   const wanted = new Set(keys);
@@ -48,11 +37,21 @@ function extractEnvVariables(
   return result;
 }
 
-function readFileContent(filePath: string): string | null {
-  try {
-    return fs.readFileSync(filePath, 'utf-8');
-  } catch (err) {
-    logger.warn({ err, filePath }, 'Failed to read file');
-    return null;
+/**
+ * Parse the .env file and return values for the requested keys.
+ * Does NOT load anything into process.env — callers decide what to
+ * do with the values. This keeps secrets out of the process environment
+ * so they don't leak to child processes.
+ */
+export function readEnvFile(
+  keys: string[],
+  fileName: string = '.env',
+): Record<string, string> {
+  const envFile = path.join(process.cwd(), fileName);
+  const content = readFile(envFile);
+  if (content === null) {
+    logger.debug('environment file not found');
+    return {};
   }
+  return parseEnvContent(content, keys);
 }
