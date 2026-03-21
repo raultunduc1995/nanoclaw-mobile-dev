@@ -227,6 +227,14 @@ function buildContainerArgs(
     `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
   );
 
+  // Inject BRIDGE_SECRET for mac-control skill (read directly — not a Claude credential)
+  const envPath = path.join(process.cwd(), 'data', 'env', 'env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    const match = envContent.match(/^BRIDGE_SECRET=(.+)$/m);
+    if (match) args.push('-e', `BRIDGE_SECRET=${match[1].trim()}`);
+  }
+
   // Mirror the host's auth method with a placeholder value.
   // API key mode: SDK sends x-api-key, proxy replaces with real key.
   // OAuth mode:   SDK exchanges placeholder token for temp API key,

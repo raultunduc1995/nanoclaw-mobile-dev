@@ -1,0 +1,16 @@
+{
+  "hosts": [
+    {
+      "name": "personal",
+      "ip": "192.168.1.X",
+      "port": 3737,
+      "description": "Personal MacBook (this machine)"
+    },
+    {
+      "name": "work",
+      "ip": "192.168.1.X",
+      "port": 3737,
+      "description": "Work MacBook - replace 192.168.1.X with actual LAN IP"
+    }
+  ]
+}
