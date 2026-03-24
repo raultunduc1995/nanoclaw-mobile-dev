@@ -7,7 +7,7 @@
 | Main group | Trusted | Private self-chat, admin control |
 | Non-main groups | Untrusted | Other users may be malicious |
 | Container agents | Sandboxed | Isolated execution environment |
-| WhatsApp messages | User input | Potential prompt injection |
+| Incoming messages | User input | Potential prompt injection |
 
 ## Security Boundaries
 
@@ -69,7 +69,7 @@ Messages and task operations are verified against group identity:
 API credentials (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`) are passed directly as environment variables to agent containers at spawn time. The host reads them from `.env` / process environment and injects them via `-e` flags.
 
 **NOT Mounted:**
-- WhatsApp session (`store/auth/`) - host only
+- Channel auth sessions (`store/auth/`) - host only
 - Mount allowlist - external, never mounted
 - Any credentials matching blocked patterns
 - `.env` is shadowed with `/dev/null` in the project root mount (prevents agents from reading other secrets)
@@ -90,7 +90,7 @@ API credentials (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`) are passed di
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                        UNTRUSTED ZONE                             │
-│  WhatsApp Messages (potentially malicious)                        │
+│  Incoming Messages (potentially malicious)                         │
 └────────────────────────────────┬─────────────────────────────────┘
                                  │
                                  ▼ Trigger check, input escaping

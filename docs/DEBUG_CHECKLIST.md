@@ -19,16 +19,16 @@ launchctl list | grep nanoclaw
 # Expected: PID  0  com.nanoclaw (PID = running, "-" = not running, non-zero exit = crashed)
 
 # 2. Any running containers?
-docker ls --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
+docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
 
 # 3. Any stopped/orphaned containers?
-docker ls -a --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
+docker ps -a --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
 
 # 4. Recent errors in service log?
 grep -E 'ERROR|WARN' logs/nanoclaw.log | tail -20
 
 # 5. Are channels connected? (look for last connection events)
-grep -E 'Connected to|Connection closed|connection.*close' logs/nanoclaw.log | tail -5
+grep -E 'Connected|Connection closed|connection.*close|channel.*ready' logs/nanoclaw.log | tail -5
 
 # 6. Are groups loaded?
 grep 'groupCount' logs/nanoclaw.log | tail -3
@@ -110,7 +110,7 @@ sqlite3 store/messages.db "SELECT name, container_config FROM registered_groups;
 docker run -i --rm --entrypoint ls nanoclaw-agent:latest /workspace/extra/
 ```
 
-## WhatsApp Auth Issues
+## Channel Auth Issues
 
 ```bash
 # Check if QR code was requested (means auth expired)
