@@ -35,5 +35,6 @@ groups/global/*
 # Skills system (local per-installation state)
 .nanoclaw/
 .claude/settings.local.json
+host-bridge/mac-hosts.json
 
 agents-sdk-docs
