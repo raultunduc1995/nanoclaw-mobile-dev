@@ -8,15 +8,17 @@ const envConfig = readEnvFile([
   'ASSISTANT_NAME',
   'ASSISTANT_HAS_OWN_NUMBER',
   'ENABLE_WHATSAPP',
+  'ENABLE_TELEGRAM',
   'ENABLE_MAC_CONTROL',
 ]);
-const envDefaultsConfig = readEnvFile(['ASSISTANT_NAME', 'ENABLE_WHATSAPP', 'ENABLE_MAC_CONTROL'], '.env.defaults');
+const envDefaultsConfig = readEnvFile(['ASSISTANT_NAME'], '.env.defaults');
 
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || envDefaultsConfig.ASSISTANT_NAME;
 export const ASSISTANT_HAS_OWN_NUMBER = (process.env.ASSISTANT_HAS_OWN_NUMBER || envConfig.ASSISTANT_HAS_OWN_NUMBER) === 'true';
-// Feature flags — .env overrides .env.defaults
-export const ENABLE_WHATSAPP = (process.env.ENABLE_WHATSAPP || envConfig.ENABLE_WHATSAPP || envDefaultsConfig.ENABLE_WHATSAPP) === 'true';
-export const ENABLE_MAC_CONTROL = (process.env.ENABLE_MAC_CONTROL || envConfig.ENABLE_MAC_CONTROL || envDefaultsConfig.ENABLE_MAC_CONTROL) === 'true';
+// Feature flags - defaults to false if not set
+export const ENABLE_WHATSAPP = (process.env.ENABLE_WHATSAPP || envConfig.ENABLE_WHATSAPP) === 'true';
+export const ENABLE_TELEGRAM = (process.env.ENABLE_TELEGRAM || envConfig.ENABLE_TELEGRAM) === 'true';
+export const ENABLE_MAC_CONTROL = (process.env.ENABLE_MAC_CONTROL || envConfig.ENABLE_MAC_CONTROL) === 'true';
 
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;

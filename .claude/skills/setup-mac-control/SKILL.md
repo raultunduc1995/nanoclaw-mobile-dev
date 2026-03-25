@@ -49,15 +49,9 @@ echo "" >> .env
 echo "ENABLE_MAC_CONTROL=true" >> .env
 ```
 
-Or if using `.env.defaults`:
-```bash
-echo "" >> .env
-echo "ENABLE_MAC_CONTROL=true" >> .env.defaults
-```
-
 Verify the flag is set:
 ```bash
-grep ENABLE_MAC_CONTROL .env .env.defaults 2>/dev/null
+grep ENABLE_MAC_CONTROL .env .env 2>/dev/null
 ```
 
 ## Phase 3: Set a fixed IP on each Mac

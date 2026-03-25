@@ -2,7 +2,7 @@
 // Each import triggers the channel module's registerChannel() call.
 // Channels gated by feature flags are conditionally imported.
 
-import { ENABLE_WHATSAPP } from '../config.js';
+import { ENABLE_TELEGRAM, ENABLE_WHATSAPP } from '../config.js';
 
 // discord
 
@@ -11,6 +11,9 @@ import { ENABLE_WHATSAPP } from '../config.js';
 // slack
 
 // telegram
+if (ENABLE_TELEGRAM) {
+  await import('./telegram/index.js');
+}
 
 // whatsapp
 if (ENABLE_WHATSAPP) {
