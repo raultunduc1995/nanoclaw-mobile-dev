@@ -97,13 +97,25 @@ Bucket the changed files:
 - **Docs**: docs, README, CHANGELOG
 - **Other**: everything else
 
-For each meaningful commit, show a brief (3-4 word) description of what it adds, similar to:
+For each meaningful commit, show a brief (3-4 word) description of what it adds and whether it's compatible with trunk:
 ```
-| Commit | What it adds |
-|--------|-------------|
-| `abc1234` | per-group trigger patterns |
-| `def5678` | timezone validation fix |
+| Commit | What it adds | Compatible? |
+|--------|-------------|-------------|
+| `abc1234` | per-group trigger patterns | ✅ yes |
+| `def5678` | timezone validation fix | ⚠️ conflicts with our config refactor |
+| `ghi9012` | OneCLI gateway setup | ❌ we removed OneCLI |
 ```
+
+**Compatibility check**: For each commit, compare it against trunk's current architecture and local changes. Run:
+```bash
+git diff $COMMIT~1..$COMMIT -- . | head -200
+```
+Flag a commit as incompatible if:
+- It modifies code paths that trunk has **refactored, renamed, or removed** (e.g. references to deleted files, old variable names, removed features).
+- It assumes infrastructure or dependencies that trunk **no longer uses** (e.g. OneCLI, old session paths).
+- It would **revert or conflict** with intentional local customizations.
+
+Mark compatible commits with ✅, questionable ones with ⚠️ (explain why), and incompatible ones with ❌ (explain why). Recommend skipping ❌ commits outright.
 
 Present to the user and ask using AskUserQuestion:
 - A) **Cherry-pick**: select specific commits to apply
