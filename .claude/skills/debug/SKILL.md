@@ -20,7 +20,7 @@ src/container-runner.ts               container/agent-runner/
     ├── data/env/env ──────────────> /workspace/env-dir/env
     ├── groups/{folder} ───────────> /workspace/group
     ├── data/ipc/{folder} ────────> /workspace/ipc
-    ├── data/sessions/{folder}/.claude/ ──> /home/node/.claude/ (isolated per-group)
+    ├── data/claude-container-config/{folder}/.claude/ ──> /home/node/.claude/ (isolated per-group)
     └── (main only) project root ──> /workspace/project
 ```
 
@@ -262,7 +262,7 @@ docker run --rm --entrypoint /bin/bash nanoclaw-agent:latest -c '
 
 ## Session Persistence
 
-Claude sessions are stored per-group in `data/sessions/{group}/.claude/` for security isolation. Each group has its own session directory, preventing cross-group access to conversation history.
+Claude sessions are stored per-group in `data/claude-container-config/{group}/.claude/` for security isolation. Each group has its own session directory, preventing cross-group access to conversation history.
 
 **Critical:** The mount path must match the container user's HOME directory:
 - Container user: `node`
@@ -273,10 +273,10 @@ To clear sessions:
 
 ```bash
 # Clear all sessions for all groups
-rm -rf data/sessions/
+rm -rf data/claude-container-config/
 
 # Clear sessions for a specific group
-rm -rf data/sessions/{groupFolder}/.claude/
+rm -rf data/claude-container-config/{groupFolder}/.claude/
 
 # Also clear the session ID from NanoClaw's tracking (stored in SQLite)
 sqlite3 store/messages.db "DELETE FROM sessions WHERE group_folder = '{groupFolder}'"

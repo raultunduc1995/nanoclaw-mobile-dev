@@ -46,7 +46,7 @@ The main group's project root is mounted read-only. Writable paths the agent nee
 
 ### 3. Session Isolation
 
-Each group has isolated Claude sessions at `data/sessions/{group}/.claude/`:
+Each group has isolated Claude sessions at `data/claude-container-config/{group}/.claude/`:
 - Groups cannot see other groups' conversation history
 - Session data includes full message history and file contents read
 - Prevents cross-group information disclosure

@@ -120,16 +120,16 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Per-group Claude sessions directory (isolated from other groups)
-  // Each group gets their own .claude/ to prevent cross-group session access
-  const groupSessionsDir = path.join(
+  // Per-group Claude container config (isolated from other groups)
+  // Each group gets their own .claude/ to prevent cross-group access
+  const groupConfigDir = path.join(
     DATA_DIR,
-    'sessions',
+    'claude-container-config',
     group.folder,
     '.claude',
   );
-  fs.mkdirSync(groupSessionsDir, { recursive: true });
-  const settingsFile = path.join(groupSessionsDir, 'settings.json');
+  fs.mkdirSync(groupConfigDir, { recursive: true });
+  const settingsFile = path.join(groupConfigDir, 'settings.json');
   if (!fs.existsSync(settingsFile)) {
     fs.writeFileSync(
       settingsFile,
@@ -142,7 +142,7 @@ function buildVolumeMounts(
             // Load CLAUDE.md from additional mounted directories
             // https://code.claude.com/docs/en/memory#load-memory-from-additional-directories
             CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-            // Enable Claude's memory feature (persists user preferences between sessions)
+            // Enable Claude's memory feature (persists user preferences)
             // https://code.claude.com/docs/en/memory#manage-auto-memory
             CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
           },
@@ -155,7 +155,7 @@ function buildVolumeMounts(
 
   // Sync skills from container/skills/ into each group's .claude/skills/
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');
-  const skillsDst = path.join(groupSessionsDir, 'skills');
+  const skillsDst = path.join(groupConfigDir, 'skills');
   if (fs.existsSync(skillsSrc)) {
     for (const skillDir of fs.readdirSync(skillsSrc)) {
       const srcDir = path.join(skillsSrc, skillDir);
@@ -165,7 +165,7 @@ function buildVolumeMounts(
     }
   }
   mounts.push({
-    hostPath: groupSessionsDir,
+    hostPath: groupConfigDir,
     containerPath: '/home/node/.claude',
     readonly: false,
   });
@@ -193,7 +193,7 @@ function buildVolumeMounts(
   );
   const groupAgentRunnerDir = path.join(
     DATA_DIR,
-    'sessions',
+    'claude-container-config',
     group.folder,
     'agent-runner-src',
   );
