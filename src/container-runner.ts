@@ -91,6 +91,7 @@ function buildVolumeMounts(
       containerPath: '/workspace/group',
       readonly: false,
     });
+
   } else {
     // Other groups only get their own folder
     mounts.push({
@@ -98,18 +99,26 @@ function buildVolumeMounts(
       containerPath: '/workspace/group',
       readonly: false,
     });
-
-    // Global memory directory (read-only for non-main)
-    // Only directory mounts are supported, not file mounts
-    const globalDir = path.join(GROUPS_DIR, 'global');
-    if (fs.existsSync(globalDir)) {
-      mounts.push({
-        hostPath: globalDir,
-        containerPath: '/workspace/global',
-        readonly: true,
-      });
-    }
   }
+
+  // Global memory directory (read-write for all groups)
+  const globalDir = path.join(GROUPS_DIR, 'global');
+  if (fs.existsSync(globalDir)) {
+    mounts.push({
+      hostPath: globalDir,
+      containerPath: '/workspace/global',
+      readonly: false,
+    });
+  }
+
+  // Shared scripts directory (read-write so agents can create reusable scripts)
+  const scriptsDir = path.join(DATA_DIR, 'scripts');
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  mounts.push({
+    hostPath: scriptsDir,
+    containerPath: '/workspace/scripts',
+    readonly: false,
+  });
 
   // Per-group Claude sessions directory (isolated from other groups)
   // Each group gets their own .claude/ to prevent cross-group session access
