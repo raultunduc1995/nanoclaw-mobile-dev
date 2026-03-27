@@ -11,13 +11,13 @@ Run `/update-nanoclaw` in Claude Code.
 
 ## How it works
 
-**Tag-based tracking**: Uses `reviewed-vN` tags on `origin/main` to track what you've already reviewed. Each run only shows changes since the last tag.
+**Tag-based tracking**: Uses `reviewed-vN` tags on `upstream/main` to track what you've already reviewed. Each run only shows changes since the last tag.
 
 **Preview**: Groups new changes by category (source, skills, config, docs) and shows a summary.
 
 **Cherry-pick**: You pick which commits to apply to trunk. Related commits can be squashed.
 
-**Advance tag**: After review, creates `reviewed-v(N+1)` at the current `origin/main` so next run starts from there.
+**Advance tag**: After review, creates `reviewed-v(N+1)` at the current `upstream/main` so next run starts from there.
 
 ## Token usage
 
@@ -30,7 +30,6 @@ Help the user review and selectively incorporate upstream changes without re-rev
 
 # Operating principles
 - Never proceed with a dirty working tree.
-- Always create a rollback point (backup branch + tag) before cherry-picking.
 - Use `reviewed-vN` tags to track review progress — never show already-reviewed changes.
 - Cherry-pick is the only update path. No merge, no rebase.
 - When squashing multiple cherry-picked commits, prefix the message with `(squash)`.
@@ -43,23 +42,15 @@ Run:
 If output is non-empty:
 - Tell the user to commit or stash first, then stop.
 
-Sync upstream to origin/main:
-- `git fetch upstream --prune`
-- `git push origin upstream/main:main`
-
-This ensures `origin/main` mirrors `upstream/main`. No local `main` branch needed.
-
-Then fetch origin:
-- `git fetch origin --prune --tags`
+Fetch upstream:
+- `git fetch upstream --prune --tags`
 
 Confirm `upstream` remote exists:
 - `git remote -v`
 If `upstream` is missing:
 - Ask the user for the upstream repo URL (default: `https://github.com/qwibitai/nanoclaw.git`).
 - Add it: `git remote add upstream <user-provided-url>`
-- Re-fetch: `git fetch upstream --prune`
-- Sync: `git push origin upstream/main:main`
-- Re-fetch origin: `git fetch origin --prune --tags`
+- Re-fetch: `git fetch upstream --prune --tags`
 
 # Step 1: Find last review tag
 
@@ -69,15 +60,15 @@ git tag -l 'reviewed-v*' --sort=-version:refname | head -1
 ```
 
 Store as `LAST_TAG`. If no tag exists:
-- Use AskUserQuestion: "No reviewed-vN tag found. This appears to be your first run. Want me to show ALL changes between origin/main and trunk, or create reviewed-v1 at the current origin/main and start fresh next time?"
-- If start fresh: create `reviewed-v1` at `origin/main`, push it, and stop.
-- If show all: set `LAST_TAG` to the merge-base of trunk and origin/main.
+- Use AskUserQuestion: "No reviewed-vN tag found. This appears to be your first run. Want me to show ALL changes between upstream/main and trunk, or create reviewed-v1 at the current upstream/main and start fresh next time?"
+- If start fresh: create `reviewed-v1` at `upstream/main`, push it, and stop.
+- If show all: set `LAST_TAG` to the merge-base of trunk and upstream/main.
 
 # Step 2: Preview new changes
 
 Show only commits added since the last review:
 ```bash
-git log --oneline --no-merges $LAST_TAG..origin/main | grep -vE '(bump version|update token count|add.*contributor)'
+git log --oneline --no-merges $LAST_TAG..upstream/main | grep -vE '(bump version|update token count|add.*contributor)'
 ```
 
 If no new commits:
@@ -85,7 +76,7 @@ If no new commits:
 
 Show file-level impact:
 ```bash
-git diff --name-only $LAST_TAG..origin/main
+git diff --name-only $LAST_TAG..upstream/main
 ```
 
 Bucket the changed files:
@@ -133,24 +124,14 @@ If Squash: after cherry-picking, `git reset --soft HEAD~N && git commit` with a 
 ```
 (squash) fix: upstream nanoclaw improvements
 
-Cherry-picked from origin/main:
+Cherry-picked from upstream/main:
 - abc1234 per-group trigger patterns
 - def5678 timezone validation fix
 ```
 
 Note: merge commits are automatically skipped during cherry-pick (`git log --no-merges` filters them from the preview). Only non-merge commits are presented for selection.
 
-# Step 3: Create a safety net
-
-Before any cherry-picks:
-- `HASH=$(git rev-parse --short HEAD)`
-- `TIMESTAMP=$(date +%Y%m%d-%H%M%S)`
-- `git branch backup/pre-update-$HASH-$TIMESTAMP`
-- `git tag pre-update-$HASH-$TIMESTAMP`
-
-Save the tag name for rollback instructions.
-
-# Step 4: Cherry-pick
+# Step 3: Cherry-pick
 
 Apply the selected commits:
 ```bash
@@ -179,7 +160,7 @@ If build fails:
 - Do not refactor unrelated code.
 - If unclear, ask the user.
 
-# Step 5: Advance review tag
+# Step 4: Advance review tag
 
 Determine the next version number:
 ```bash
@@ -189,11 +170,11 @@ NEXT_NUM=$((LAST_NUM + 1))
 
 Create and push the new tag:
 ```bash
-git tag reviewed-v$NEXT_NUM origin/main
+git tag reviewed-v$NEXT_NUM upstream/main
 git push origin reviewed-v$NEXT_NUM
 ```
 
-# Step 6: Summary
+# Step 5: Summary
 
 Show:
 - Previous review tag: `$LAST_TAG`
@@ -201,10 +182,8 @@ Show:
 - Commits applied (list them)
 - Commits skipped (list them — these won't show up next time)
 - Conflicts resolved (list files, if any)
-- Backup tag for rollback: `pre-update-$HASH-$TIMESTAMP`
 
 Tell the user:
-- To rollback: `git reset --hard pre-update-$HASH-$TIMESTAMP`
 - Run `/rebuild-everything` to apply changes to containers and service.
 
 ## Diagnostics

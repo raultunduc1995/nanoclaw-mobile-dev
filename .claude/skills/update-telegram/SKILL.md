@@ -1,23 +1,23 @@
 ---
 name: update-telegram
-description: Review and cherry-pick new upstream/telegram changes using incremental reviewed-telegram-vN tags. Only shows changes since last review.
+description: Review and cherry-pick new upstream-telegram changes using incremental reviewed-telegram-vN tags. Only shows changes since last review.
 ---
 
 # About
 
-Your Telegram channel fork drifts from upstream/telegram as you customize it. This skill shows only **new** upstream/telegram changes since your last review, lets you cherry-pick what you want, and advances the review tag so you never re-review skipped changes.
+Your Telegram channel fork drifts from upstream-telegram as you customize it. This skill shows only **new** upstream-telegram changes since your last review, lets you cherry-pick what you want, and advances the review tag so you never re-review skipped changes.
 
 Run `/update-telegram` in Claude Code.
 
 ## How it works
 
-**Tag-based tracking**: Uses `reviewed-telegram-vN` tags on `upstream/telegram/main` to track what you've already reviewed. Each run only shows changes since the last tag.
+**Tag-based tracking**: Uses `reviewed-telegram-vN` tags on `upstream-telegram/main` to track what you've already reviewed. Each run only shows changes since the last tag.
 
 **Preview**: Groups new changes by category (source, skills, config, docs) and shows a summary.
 
 **Cherry-pick**: You pick which commits to apply to trunk. Related commits can be squashed.
 
-**Advance tag**: After review, creates `reviewed-telegram-v(N+1)` at the current `upstream/telegram/main` so next run starts from there.
+**Advance tag**: After review, creates `reviewed-telegram-v(N+1)` at the current `upstream-telegram/main` so next run starts from there.
 
 ## Token usage
 
@@ -26,11 +26,10 @@ Only opens files with actual conflicts. Uses `git log`, `git diff`, and `git sta
 ---
 
 # Goal
-Help the user review and selectively incorporate upstream/telegram changes without re-reviewing previously skipped changes.
+Help the user review and selectively incorporate upstream-telegram changes without re-reviewing previously skipped changes.
 
 # Operating principles
 - Never proceed with a dirty working tree.
-- Always create a rollback point (backup branch + tag) before cherry-picking.
 - Use `reviewed-telegram-vN` tags to track review progress — never show already-reviewed changes.
 - Cherry-pick is the only update path. No merge, no rebase.
 - When squashing multiple cherry-picked commits, prefix the message with `(squash)`.
@@ -50,15 +49,15 @@ Run:
 If output is non-empty:
 - Tell the user to commit or stash first, then stop.
 
-Fetch upstream/telegram:
-- `git fetch upstream/telegram --prune --tags`
+Fetch upstream-telegram:
+- `git fetch upstream-telegram --prune --tags`
 
-Confirm `upstream/telegram` remote exists:
+Confirm `upstream-telegram` remote exists:
 - `git remote -v`
-If `upstream/telegram` is missing:
+If `upstream-telegram` is missing:
 - Ask the user for the upstream repo URL (default: `https://github.com/qwibitai/nanoclaw-telegram`).
-- Add it: `git remote add upstream/telegram <user-provided-url>`
-- Re-fetch: `git fetch upstream/telegram --prune --tags`
+- Add it: `git remote add upstream-telegram <user-provided-url>`
+- Re-fetch: `git fetch upstream-telegram --prune --tags`
 
 # Step 1: Find last review tag
 
@@ -68,23 +67,23 @@ git tag -l 'reviewed-telegram-v*' --sort=-version:refname | head -1
 ```
 
 Store as `LAST_TAG`. If no tag exists:
-- Use AskUserQuestion: "No reviewed-telegram-vN tag found. This appears to be your first run. Want me to show ALL changes between upstream/telegram/main and trunk, or create reviewed-telegram-v1 at the current upstream/telegram/main and start fresh next time?"
-- If start fresh: create `reviewed-telegram-v1` at `upstream/telegram/main`, push it, and stop.
-- If show all: set `LAST_TAG` to the merge-base of trunk and upstream/telegram/main.
+- Use AskUserQuestion: "No reviewed-telegram-vN tag found. This appears to be your first run. Want me to show ALL changes between upstream-telegram/main and trunk, or create reviewed-telegram-v1 at the current upstream-telegram/main and start fresh next time?"
+- If start fresh: create `reviewed-telegram-v1` at `upstream-telegram/main`, push it, and stop.
+- If show all: set `LAST_TAG` to the merge-base of trunk and upstream-telegram/main.
 
 # Step 2: Preview new changes
 
 Show only commits added since the last review:
 ```bash
-git log --oneline --no-merges $LAST_TAG..upstream/telegram/main | grep -vE '(bump version|update token count|add.*contributor)'
+git log --oneline --no-merges $LAST_TAG..upstream-telegram/main | grep -vE '(bump version|update token count|add.*contributor)'
 ```
 
 If no new commits:
-- Tell the user "No new upstream/telegram changes since $LAST_TAG" and stop.
+- Tell the user "No new upstream-telegram changes since $LAST_TAG" and stop.
 
 Show file-level impact:
 ```bash
-git diff --name-only $LAST_TAG..upstream/telegram/main
+git diff --name-only $LAST_TAG..upstream-telegram/main
 ```
 
 Bucket the changed files:
@@ -134,22 +133,12 @@ If Squash: after cherry-picking, `git reset --soft HEAD~N && git commit` with a 
 ```
 (squash) fix: upstream telegram improvements
 
-Cherry-picked from upstream/telegram/main:
+Cherry-picked from upstream-telegram/main:
 - abc1234 topic/thread_id support
 - def5678 slash command filtering
 ```
 
-# Step 3: Create a safety net
-
-Before any cherry-picks:
-- `HASH=$(git rev-parse --short HEAD)`
-- `TIMESTAMP=$(date +%Y%m%d-%H%M%S)`
-- `git branch backup/pre-update-telegram-$HASH-$TIMESTAMP`
-- `git tag pre-update-telegram-$HASH-$TIMESTAMP`
-
-Save the tag name for rollback instructions.
-
-# Step 4: Cherry-pick
+# Step 3: Cherry-pick
 
 Apply the selected commits:
 ```bash
@@ -178,7 +167,7 @@ If build fails:
 - Do not refactor unrelated code.
 - If unclear, ask the user.
 
-# Step 5: Advance review tag
+# Step 4: Advance review tag
 
 Determine the next version number:
 ```bash
@@ -190,11 +179,11 @@ If no previous tag exists, use `NEXT_NUM=1`.
 
 Create and push the new tag:
 ```bash
-git tag reviewed-telegram-v$NEXT_NUM upstream/telegram/main
+git tag reviewed-telegram-v$NEXT_NUM upstream-telegram/main
 git push origin reviewed-telegram-v$NEXT_NUM
 ```
 
-# Step 6: Summary
+# Step 5: Summary
 
 Show:
 - Previous review tag: `$LAST_TAG`
@@ -202,10 +191,8 @@ Show:
 - Commits applied (list them)
 - Commits skipped (list them — these won't show up next time)
 - Conflicts resolved (list files, if any)
-- Backup tag for rollback: `pre-update-telegram-$HASH-$TIMESTAMP`
 
 Tell the user:
-- To rollback: `git reset --hard pre-update-telegram-$HASH-$TIMESTAMP`
 - Run `/rebuild-everything` to apply changes to containers and service.
 
 ## Diagnostics

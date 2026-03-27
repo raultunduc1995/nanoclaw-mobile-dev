@@ -30,7 +30,6 @@ Help the user review and selectively incorporate upstream-whatsapp changes witho
 
 # Operating principles
 - Never proceed with a dirty working tree.
-- Always create a rollback point (backup branch + tag) before cherry-picking.
 - Use `reviewed-whatsapp-vN` tags to track review progress — never show already-reviewed changes.
 - Cherry-pick is the only update path. No merge, no rebase.
 - When squashing multiple cherry-picked commits, prefix the message with `(squash)`.
@@ -141,17 +140,7 @@ Cherry-picked from upstream-whatsapp/main:
 - def5678 senderPn LID fallback
 ```
 
-# Step 3: Create a safety net
-
-Before any cherry-picks:
-- `HASH=$(git rev-parse --short HEAD)`
-- `TIMESTAMP=$(date +%Y%m%d-%H%M%S)`
-- `git branch backup/pre-update-whatsapp-$HASH-$TIMESTAMP`
-- `git tag pre-update-whatsapp-$HASH-$TIMESTAMP`
-
-Save the tag name for rollback instructions.
-
-# Step 4: Cherry-pick
+# Step 3: Cherry-pick
 
 Apply the selected commits:
 ```bash
@@ -180,7 +169,7 @@ If build fails:
 - Do not refactor unrelated code.
 - If unclear, ask the user.
 
-# Step 5: Advance review tag
+# Step 4: Advance review tag
 
 Determine the next version number:
 ```bash
@@ -196,7 +185,7 @@ git tag reviewed-whatsapp-v$NEXT_NUM upstream-whatsapp/main
 git push origin reviewed-whatsapp-v$NEXT_NUM
 ```
 
-# Step 6: Summary
+# Step 5: Summary
 
 Show:
 - Previous review tag: `$LAST_TAG`
@@ -204,10 +193,8 @@ Show:
 - Commits applied (list them)
 - Commits skipped (list them — these won't show up next time)
 - Conflicts resolved (list files, if any)
-- Backup tag for rollback: `pre-update-whatsapp-$HASH-$TIMESTAMP`
 
 Tell the user:
-- To rollback: `git reset --hard pre-update-whatsapp-$HASH-$TIMESTAMP`
 - Run `/rebuild-everything` to apply changes to containers and service.
 
 ## Diagnostics
