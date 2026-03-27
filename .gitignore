@@ -18,6 +18,9 @@ groups/global/*
 !groups/global/CLAUDE.md
 !groups/main/CLAUDE.md
 
+# Local overrides
+CLAUDE.local.md
+
 # Secrets
 *.keys.json
 .env
