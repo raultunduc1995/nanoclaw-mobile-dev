@@ -11,6 +11,7 @@ const envConfig = readEnvFile([
   'ENABLE_WHATSAPP',
   'ENABLE_TELEGRAM',
   'ENABLE_MAC_CONTROL',
+  'MAX_MESSAGES_PER_PROMPT',
   'TZ',
 ]);
 
@@ -57,7 +58,7 @@ export const CONTAINER_MAX_OUTPUT_SIZE = parseInt(
 ); // 10MB default
 export const MAX_MESSAGES_PER_PROMPT = Math.max(
   1,
-  parseInt(process.env.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10,
+  parseInt(process.env.MAX_MESSAGES_PER_PROMPT || envConfig.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10,
 );
 export const IPC_POLL_INTERVAL = 1000;
 export const IDLE_TIMEOUT = parseInt(process.env.IDLE_TIMEOUT || '5400000', 10); // 1.5h default — how long to keep container alive after last result
