@@ -1,6 +1,6 @@
 # NanoClaw Debug Checklist
 
-## Known Issues
+## Known Issues (2026-02-08)
 
 ### 1. [FIXED] Resume branches from stale tree position
 When agent teams spawns subagent CLI processes, they write to the same session JSONL. On subsequent `query()` resumes, the CLI reads the JSONL but may pick a stale branch tip (from before the subagent activity), causing the agent's response to land on a branch the host never receives a `result` for. **Fix**: pass `resumeSessionAt` with the last assistant message UUID to explicitly anchor each resume.
@@ -10,6 +10,34 @@ Both timers fire at the same time, so containers always exit via hard SIGKILL (c
 
 ### 3. Cursor advanced before agent succeeds
 `processGroupMessages` advances `lastAgentTimestamp` before the agent runs. If the container times out, retries find no messages (cursor already past them). Messages are permanently lost on timeout.
+
+### 4. Kubernetes image garbage collection deletes nanoclaw-agent image
+
+**Symptoms**: `Container exited with code 125: pull access denied for nanoclaw-agent` — the container image disappears overnight or after a few hours, even though you just built it.
+
+**Cause**: If your container runtime has Kubernetes enabled (Rancher Desktop enables it by default), the kubelet runs image garbage collection when disk usage exceeds 85%. NanoClaw containers are ephemeral (run and exit), so `nanoclaw-agent:latest` is never protected by a running container. The kubelet sees it as unused and deletes it — often overnight when no messages are being processed. Other images (docker-compose services) survive because they have long-running containers referencing them.
+
+**Fix**: Disable Kubernetes if you don't need it:
+```bash
+# Rancher Desktop
+rdctl set --kubernetes-enabled=false
+
+# Then rebuild the container image
+./container/build.sh
+```
+
+**Diagnosis**: Check the k3s log for image GC activity:
+```bash
+grep -i "nanoclaw" ~/Library/Logs/rancher-desktop/k3s.log
+# Look for: "Removing image to free bytes" with the nanoclaw-agent image ID
+```
+
+Check NanoClaw logs for image status:
+```bash
+grep -E "image found|image NOT found|image missing" logs/nanoclaw.log
+```
+
+If you need Kubernetes enabled, set `CONTAINER_IMAGE` to an image stored in a registry that the kubelet won't GC, or raise the GC thresholds.
 
 ## Quick Status Check
 
@@ -27,7 +55,7 @@ docker ps -a --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
 # 4. Recent errors in service log?
 grep -E 'ERROR|WARN' logs/nanoclaw.log | tail -20
 
-# 5. Are channels connected? (look for last connection events)
+# 5. Are channels connected? (look for last connection event)
 grep -E 'Connected|Connection closed|connection.*close|channel.*ready' logs/nanoclaw.log | tail -5
 
 # 6. Are groups loaded?
@@ -38,7 +66,7 @@ grep 'groupCount' logs/nanoclaw.log | tail -3
 
 ```bash
 # Check for concurrent CLI processes in session debug logs
-ls -la data/claude-container-config/<group>/.claude/debug/
+ls -la data/sessions/<group>/.claude/debug/
 
 # Count unique SDK processes that handled messages
 # Each .txt file = one CLI subprocess. Multiple = concurrent queries.
@@ -46,7 +74,7 @@ ls -la data/claude-container-config/<group>/.claude/debug/
 # Check parentUuid branching in transcript
 python3 -c "
 import json, sys
-lines = open('data/claude-container-config/<group>/.claude/projects/-workspace-group/<session>.jsonl').read().strip().split('\n')
+lines = open('data/sessions/<group>/.claude/projects/-workspace-group/<session>.jsonl').read().strip().split('\n')
 for i, line in enumerate(lines):
   try:
     d = json.loads(line)
