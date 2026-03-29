@@ -152,6 +152,7 @@ If conflicts during cherry-pick:
 - Open only conflicted files, resolve conflict markers.
 - Preserve intentional local customizations.
 - Do not refactor surrounding code.
+- **CLAUDE.md conflicts** (`groups/global/CLAUDE.md` or `groups/main/CLAUDE.md`): these files are deleted on trunk. If upstream modified them, review the upstream changes for useful content. Copy any useful bits into the corresponding `CLAUDE.local.md` file (`groups/global/CLAUDE.local.md` or `groups/main/CLAUDE.local.md`). Then `git rm` the conflicted `CLAUDE.md` file and continue.
 - `git add <file>` then `git cherry-pick --continue`
 
 If user wants to stop mid-cherry-pick:
