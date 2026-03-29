@@ -17,6 +17,8 @@ groups/main/*
 groups/global/*
 !groups/global/CLAUDE.md
 !groups/main/CLAUDE.md
+!groups/global/CLAUDE.local.md
+!groups/main/CLAUDE.local.md
 
 # Local overrides
 CLAUDE.local.md
