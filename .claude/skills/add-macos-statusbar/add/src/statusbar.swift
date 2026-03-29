@@ -20,8 +20,8 @@ class StatusBarController: NSObject {
         setupStatusItem()
         isRunning = checkRunning()
         updateMenu()
-        // Poll every 5 seconds to reflect external state changes
-        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+        // Poll every 30 seconds to reflect external state changes
+        timer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             let current = self.checkRunning()
             if current != self.isRunning {
