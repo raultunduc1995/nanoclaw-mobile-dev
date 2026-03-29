@@ -130,23 +130,14 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
   // Create group folder
   fs.mkdirSync(path.join(groupDir, 'logs'), { recursive: true });
 
-  // Copy CLAUDE.md template into the new group folder so agents have
-  // identity and instructions from the first run.
-  const groupMdFile = path.join(groupDir, 'CLAUDE.md');
-  if (!fs.existsSync(groupMdFile)) {
-    const templateFile = path.join(
-      GROUPS_DIR,
-      group.isMain ? 'main' : 'global',
-      'CLAUDE.md',
-    );
-    if (fs.existsSync(templateFile)) {
-      let content = fs.readFileSync(templateFile, 'utf-8');
-      if (ASSISTANT_NAME !== 'Andy') {
-        content = content.replace(/^# Andy$/m, `# ${ASSISTANT_NAME}`);
-        content = content.replace(/You are Andy/g, `You are ${ASSISTANT_NAME}`);
-      }
-      fs.writeFileSync(groupMdFile, content);
-      logger.info({ folder: group.folder }, 'Created CLAUDE.md from template');
+  // Copy global CLAUDE.local.md into non-main group folders so agents have
+  // shared instructions from the first run. Main has its own CLAUDE.local.md.
+  if (!group.isMain) {
+    const globalLocalMd = path.join(GROUPS_DIR, 'global', 'CLAUDE.local.md');
+    const groupLocalMd = path.join(groupDir, 'CLAUDE.local.md');
+    if (fs.existsSync(globalLocalMd)) {
+      fs.copyFileSync(globalLocalMd, groupLocalMd);
+      logger.info({ folder: group.folder }, 'Copied global CLAUDE.local.md to group');
     }
   }
 
