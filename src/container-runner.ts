@@ -101,13 +101,13 @@ function buildVolumeMounts(
     });
   }
 
-  // Global memory directory (read-write for all groups)
+  // Global memory directory (read-write for main, read-only for others)
   const globalDir = path.join(GROUPS_DIR, 'global');
   if (fs.existsSync(globalDir)) {
     mounts.push({
       hostPath: globalDir,
       containerPath: '/workspace/global',
-      readonly: false,
+      readonly: !isMain,
     });
   }
 
