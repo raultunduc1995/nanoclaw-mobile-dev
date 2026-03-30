@@ -448,7 +448,7 @@ export async function processTaskIpc(
           trigger: data.trigger,
           added_at: new Date().toISOString(),
           containerConfig: data.containerConfig,
-          requiresTrigger: data.requiresTrigger,
+          requiresTrigger: false,
         });
       } else {
         logger.warn(
