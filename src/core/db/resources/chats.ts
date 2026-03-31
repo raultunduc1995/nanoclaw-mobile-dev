@@ -34,77 +34,69 @@ export interface ChatsLocalResource {
   setLastGroupSync(): void;
 }
 
-export class ChatsResource implements ChatsLocalResource {
-  constructor(private db: Database.Database) {}
-
-  storeMetadata(
+export const createChatsLocalResource = (
+  db: Database.Database,
+): ChatsLocalResource => ({
+  storeMetadata: (
     chatJid: string,
     timestamp: string,
     name?: string,
     channel?: string,
     isGroup?: boolean,
-  ): void {
+  ) => {
     const ch = channel ?? null;
     const group = isGroup === undefined ? null : isGroup ? 1 : 0;
 
     if (name) {
-      this.db
-        .prepare(
-          `INSERT INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)
+      db.prepare(
+        `INSERT INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)
            ON CONFLICT(jid) DO UPDATE SET
              name = excluded.name,
              last_message_time = MAX(last_message_time, excluded.last_message_time),
              channel = COALESCE(excluded.channel, channel),
              is_group = COALESCE(excluded.is_group, is_group)`,
-        )
-        .run(chatJid, name, timestamp, ch, group);
+      ).run(chatJid, name, timestamp, ch, group);
     } else {
-      this.db
-        .prepare(
-          `INSERT INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)
+      db.prepare(
+        `INSERT INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)
            ON CONFLICT(jid) DO UPDATE SET
              last_message_time = MAX(last_message_time, excluded.last_message_time),
              channel = COALESCE(excluded.channel, channel),
              is_group = COALESCE(excluded.is_group, is_group)`,
-        )
-        .run(chatJid, chatJid, timestamp, ch, group);
+      ).run(chatJid, chatJid, timestamp, ch, group);
     }
-  }
+  },
 
-  updateName(chatJid: string, name: string): void {
-    this.db
-      .prepare(
-        `INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)
+  updateName: (chatJid: string, name: string) => {
+    db.prepare(
+      `INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)
          ON CONFLICT(jid) DO UPDATE SET name = excluded.name`,
-      )
-      .run(chatJid, name, new Date().toISOString());
-  }
+    ).run(chatJid, name, new Date().toISOString());
+  },
 
-  getAll(): ChatInfo[] {
-    const rows = this.db
+  getAll: (): ChatInfo[] => {
+    const rows = db
       .prepare(
         `SELECT jid, name, last_message_time, channel, is_group
          FROM chats ORDER BY last_message_time DESC`,
       )
       .all() as ChatRow[];
     return rows.map(toChat);
-  }
+  },
 
-  getLastGroupSync(): string | null {
-    const row = this.db
+  getLastGroupSync: (): string | null => {
+    const row = db
       .prepare(
         `SELECT last_message_time FROM chats WHERE jid = '__group_sync__'`,
       )
       .get() as { last_message_time: string } | undefined;
     return row?.last_message_time || null;
-  }
+  },
 
-  setLastGroupSync(): void {
+  setLastGroupSync: (): void => {
     const now = new Date().toISOString();
-    this.db
-      .prepare(
-        `INSERT OR REPLACE INTO chats (jid, name, last_message_time) VALUES ('__group_sync__', '__group_sync__', ?)`,
-      )
-      .run(now);
-  }
-}
+    db.prepare(
+      `INSERT OR REPLACE INTO chats (jid, name, last_message_time) VALUES ('__group_sync__', '__group_sync__', ?)`,
+    ).run(now);
+  },
+});

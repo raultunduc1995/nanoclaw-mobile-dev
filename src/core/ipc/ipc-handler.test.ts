@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import { initTestDatabase } from '../db/index.js';
 import type { LocalDatabase, RegisteredGroup } from '../db/index.js';
-import { IpcHandler } from './handler.js';
+import { createIpcHandler } from './handler.js';
+import type { IpcHandler } from './handler.js';
 import type { IpcDeps } from './service.js';
 
 const MAIN_GROUP: RegisteredGroup = {
@@ -57,7 +58,7 @@ beforeEach(() => {
     onTasksChanged: () => {},
   };
 
-  handler = new IpcHandler(db, deps);
+  handler = createIpcHandler(db, deps);
 });
 
 // --- schedule_task authorization ---

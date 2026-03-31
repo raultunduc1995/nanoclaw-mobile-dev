@@ -34,11 +34,11 @@ export interface GroupsLocalResource {
   getAll(): Record<string, RegisteredGroup>;
 }
 
-export class GroupsResource implements GroupsLocalResource {
-  constructor(private db: Database.Database) {}
-
-  get(jid: string): (RegisteredGroup & { jid: string }) | undefined {
-    const row = this.db
+export const createGroupsLocalResource = (
+  db: Database.Database,
+): GroupsLocalResource => ({
+  get: (jid: string): (RegisteredGroup & { jid: string }) | undefined => {
+    const row = db
       .prepare('SELECT * FROM registered_groups WHERE jid = ?')
       .get(jid) as GroupRow | undefined;
     if (!row) return undefined;
@@ -50,31 +50,29 @@ export class GroupsResource implements GroupsLocalResource {
       return undefined;
     }
     return toGroup(row);
-  }
+  },
 
-  set(jid: string, group: RegisteredGroup): void {
+  set: (jid: string, group: RegisteredGroup) => {
     if (!isValidGroupFolder(group.folder)) {
       throw new Error(`Invalid group folder "${group.folder}" for JID ${jid}`);
     }
-    this.db
-      .prepare(
-        `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main)
+    db.prepare(
+      `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        jid,
-        group.name,
-        group.folder,
-        'none', // TODO: delete trigger_pattern column + migrate DB
-        group.addedAt,
-        group.containerConfig ? JSON.stringify(group.containerConfig) : null,
-        0, // TODO: delete requires_trigger column + migrate DB
-        group.isMain ? 1 : 0,
-      );
-  }
+    ).run(
+      jid,
+      group.name,
+      group.folder,
+      'none', // TODO: delete trigger_pattern column + migrate DB
+      group.addedAt,
+      group.containerConfig ? JSON.stringify(group.containerConfig) : null,
+      0, // TODO: delete requires_trigger column + migrate DB
+      group.isMain ? 1 : 0,
+    );
+  },
 
-  getAll(): Record<string, RegisteredGroup> {
-    const rows = this.db
+  getAll: (): Record<string, RegisteredGroup> => {
+    const rows = db
       .prepare('SELECT * FROM registered_groups')
       .all() as GroupRow[];
     const result: Record<string, RegisteredGroup> = {};
@@ -97,5 +95,5 @@ export class GroupsResource implements GroupsLocalResource {
       };
     }
     return result;
-  }
-}
+  },
+});

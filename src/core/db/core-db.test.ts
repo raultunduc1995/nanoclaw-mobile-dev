@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { initTestDatabase } from './connection.js';
-import type { LocalDatabase } from './connection.js';
+import type { LocalResource } from './connection.js';
 import type { Message } from './types.js';
 
-let db: LocalDatabase;
+let db: LocalResource;
 
 beforeEach(() => {
   db = initTestDatabase();

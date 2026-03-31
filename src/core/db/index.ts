@@ -1,4 +1,4 @@
-export type { LocalDatabase } from './connection.js';
+export type { LocalResource as LocalDatabase } from './connection.js';
 export { initLocalDatabase, initTestDatabase, getLocalDatabase } from './connection.js';
 
 export type { ChatsLocalResource } from './resources/chats.js';

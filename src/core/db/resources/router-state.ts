@@ -5,21 +5,21 @@ export interface RouterStateLocalResource {
   set(key: string, value: string): void;
 }
 
-export class RouterStateResource implements RouterStateLocalResource {
-  constructor(private db: Database.Database) {}
+export const createRouterStateLocalResource = (
+  db: Database.Database,
+): RouterStateLocalResource => {
+  return {
+    get: (key: string): string | undefined => {
+      const row = db
+        .prepare('SELECT value FROM router_state WHERE key = ?')
+        .get(key) as { value: string } | undefined;
+      return row?.value;
+    },
 
-  get(key: string): string | undefined {
-    const row = this.db
-      .prepare('SELECT value FROM router_state WHERE key = ?')
-      .get(key) as { value: string } | undefined;
-    return row?.value;
-  }
-
-  set(key: string, value: string): void {
-    this.db
-      .prepare(
+    set: (key: string, value: string) => {
+      db.prepare(
         'INSERT OR REPLACE INTO router_state (key, value) VALUES (?, ?)',
-      )
-      .run(key, value);
-  }
-}
+      ).run(key, value);
+    },
+  };
+};

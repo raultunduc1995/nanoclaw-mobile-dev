@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-export function createSchema(database: Database.Database): void {
+export const createSchema = (database: Database.Database): void => {
   database.exec(`
     CREATE TABLE IF NOT EXISTS chats (
       jid TEXT PRIMARY KEY,
@@ -71,4 +71,4 @@ export function createSchema(database: Database.Database): void {
       is_main INTEGER DEFAULT 0
     );
   `);
-}
+};

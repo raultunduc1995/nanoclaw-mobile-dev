@@ -60,16 +60,13 @@ export interface TasksLocalResource {
   logRun(log: TaskRunLog): void;
 }
 
-export class TasksResource implements TasksLocalResource {
-  constructor(private db: Database.Database) {}
-
-  create(task: Omit<ScheduledTask, 'lastRun' | 'lastResult'>): void {
-    this.db
-      .prepare(
+export const createTasksLocalResource = (db: Database.Database): TasksLocalResource => {
+  return {
+    create: (task: Omit<ScheduledTask, 'lastRun' | 'lastResult'>) => {
+      db.prepare(
         `INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, script, schedule_type, schedule_value, context_mode, next_run, status, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+      ).run(
         task.id,
         task.groupFolder,
         task.chatJid,
@@ -82,117 +79,111 @@ export class TasksResource implements TasksLocalResource {
         task.status,
         task.createdAt,
       );
-  }
+    },
 
-  getById(id: string): ScheduledTask | undefined {
-    const row = this.db
-      .prepare('SELECT * FROM scheduled_tasks WHERE id = ?')
-      .get(id) as TaskRow | undefined;
-    return row ? toTask(row) : undefined;
-  }
+    getById: (id: string): ScheduledTask | undefined => {
+      const row = db
+        .prepare('SELECT * FROM scheduled_tasks WHERE id = ?')
+        .get(id) as TaskRow | undefined;
+      return row ? toTask(row) : undefined;
+    },
 
-  getForGroup(groupFolder: string): ScheduledTask[] {
-    const rows = this.db
-      .prepare(
-        'SELECT * FROM scheduled_tasks WHERE group_folder = ? ORDER BY created_at DESC',
-      )
-      .all(groupFolder) as TaskRow[];
-    return rows.map(toTask);
-  }
+    getForGroup: (groupFolder: string): ScheduledTask[] => {
+      const rows = db
+        .prepare(
+          'SELECT * FROM scheduled_tasks WHERE group_folder = ? ORDER BY created_at DESC',
+        )
+        .all(groupFolder) as TaskRow[];
+      return rows.map(toTask);
+    },
 
-  getAll(): ScheduledTask[] {
-    const rows = this.db
-      .prepare('SELECT * FROM scheduled_tasks ORDER BY created_at DESC')
-      .all() as TaskRow[];
-    return rows.map(toTask);
-  }
+    getAll: (): ScheduledTask[] => {
+      const rows = db
+        .prepare('SELECT * FROM scheduled_tasks ORDER BY created_at DESC')
+        .all() as TaskRow[];
+      return rows.map(toTask);
+    },
 
-  update(
-    id: string,
-    updates: Partial<
-      Pick<
-        ScheduledTask,
-        'prompt' | 'script' | 'scheduleType' | 'scheduleValue' | 'nextRun' | 'status'
-      >
-    >,
-  ): void {
-    const fields: string[] = [];
-    const values: unknown[] = [];
+    update: (
+      id: string,
+      updates: Partial<
+        Pick<
+          ScheduledTask,
+          'prompt' | 'script' | 'scheduleType' | 'scheduleValue' | 'nextRun' | 'status'
+        >
+      >,
+    ) => {
+      const fields: string[] = [];
+      const values: unknown[] = [];
 
-    if (updates.prompt !== undefined) {
-      fields.push('prompt = ?');
-      values.push(updates.prompt);
-    }
-    if (updates.script !== undefined) {
-      fields.push('script = ?');
-      values.push(updates.script || null);
-    }
-    if (updates.scheduleType !== undefined) {
-      fields.push('schedule_type = ?');
-      values.push(updates.scheduleType);
-    }
-    if (updates.scheduleValue !== undefined) {
-      fields.push('schedule_value = ?');
-      values.push(updates.scheduleValue);
-    }
-    if (updates.nextRun !== undefined) {
-      fields.push('next_run = ?');
-      values.push(updates.nextRun);
-    }
-    if (updates.status !== undefined) {
-      fields.push('status = ?');
-      values.push(updates.status);
-    }
+      if (updates.prompt !== undefined) {
+        fields.push('prompt = ?');
+        values.push(updates.prompt);
+      }
+      if (updates.script !== undefined) {
+        fields.push('script = ?');
+        values.push(updates.script || null);
+      }
+      if (updates.scheduleType !== undefined) {
+        fields.push('schedule_type = ?');
+        values.push(updates.scheduleType);
+      }
+      if (updates.scheduleValue !== undefined) {
+        fields.push('schedule_value = ?');
+        values.push(updates.scheduleValue);
+      }
+      if (updates.nextRun !== undefined) {
+        fields.push('next_run = ?');
+        values.push(updates.nextRun);
+      }
+      if (updates.status !== undefined) {
+        fields.push('status = ?');
+        values.push(updates.status);
+      }
 
-    if (fields.length === 0) return;
+      if (fields.length === 0) return;
 
-    values.push(id);
-    this.db
-      .prepare(
+      values.push(id);
+      db.prepare(
         `UPDATE scheduled_tasks SET ${fields.join(', ')} WHERE id = ?`,
-      )
-      .run(...values);
-  }
+      ).run(...values);
+    },
 
-  delete(id: string): void {
-    this.db.prepare('DELETE FROM task_run_logs WHERE task_id = ?').run(id);
-    this.db.prepare('DELETE FROM scheduled_tasks WHERE id = ?').run(id);
-  }
+    delete: (id: string) => {
+      db.prepare('DELETE FROM task_run_logs WHERE task_id = ?').run(id);
+      db.prepare('DELETE FROM scheduled_tasks WHERE id = ?').run(id);
+    },
 
-  getDue(): ScheduledTask[] {
-    const now = new Date().toISOString();
-    const rows = this.db
-      .prepare(
-        `SELECT * FROM scheduled_tasks
-         WHERE status = 'active' AND next_run IS NOT NULL AND next_run <= ?
-         ORDER BY next_run`,
-      )
-      .all(now) as TaskRow[];
-    return rows.map(toTask);
-  }
+    getDue: (): ScheduledTask[] => {
+      const now = new Date().toISOString();
+      const rows = db
+        .prepare(
+          `SELECT * FROM scheduled_tasks
+           WHERE status = 'active' AND next_run IS NOT NULL AND next_run <= ?
+           ORDER BY next_run`,
+        )
+        .all(now) as TaskRow[];
+      return rows.map(toTask);
+    },
 
-  updateAfterRun(
-    id: string,
-    nextRun: string | null,
-    lastResult: string,
-  ): void {
-    const now = new Date().toISOString();
-    this.db
-      .prepare(
+    updateAfterRun: (
+      id: string,
+      nextRun: string | null,
+      lastResult: string,
+    ) => {
+      const now = new Date().toISOString();
+      db.prepare(
         `UPDATE scheduled_tasks
          SET next_run = ?, last_run = ?, last_result = ?, status = CASE WHEN ? IS NULL THEN 'completed' ELSE status END
          WHERE id = ?`,
-      )
-      .run(nextRun, now, lastResult, nextRun, id);
-  }
+      ).run(nextRun, now, lastResult, nextRun, id);
+    },
 
-  logRun(log: TaskRunLog): void {
-    this.db
-      .prepare(
+    logRun: (log: TaskRunLog) => {
+      db.prepare(
         `INSERT INTO task_run_logs (task_id, run_at, duration_ms, status, result, error)
          VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+      ).run(
         log.taskId,
         log.runAt,
         log.durationMs,
@@ -200,5 +191,6 @@ export class TasksResource implements TasksLocalResource {
         log.result,
         log.error,
       );
-  }
+    },
+  };
 }
