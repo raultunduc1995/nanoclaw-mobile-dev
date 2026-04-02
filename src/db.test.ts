@@ -1,20 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import {
-  _initTestDatabase,
-  createTask,
-  deleteTask,
-  getAllChats,
-  getAllRegisteredGroups,
-  getLastBotMessageTimestamp,
-  getMessagesSince,
-  getNewMessages,
-  getTaskById,
-  setRegisteredGroup,
-  storeChatMetadata,
-  storeMessage,
-  updateTask,
-} from './db.js';
+import { _initTestDatabase, createTask, deleteTask, getAllChats, getAllRegisteredGroups, getLastBotMessageTimestamp, getMessagesSince, getNewMessages, getTaskById, setRegisteredGroup, storeChatMetadata, storeMessage, updateTask } from './db.js';
 import { formatMessages } from './router.js';
 
 beforeEach(() => {
@@ -22,15 +8,7 @@ beforeEach(() => {
 });
 
 // Helper to store a message using the normalized NewMessage interface
-function store(overrides: {
-  id: string;
-  chat_jid: string;
-  sender: string;
-  sender_name: string;
-  content: string;
-  timestamp: string;
-  is_from_me?: boolean;
-}) {
+function store(overrides: { id: string; chat_jid: string; sender: string; sender_name: string; content: string; timestamp: string; is_from_me?: boolean }) {
   storeMessage({
     id: overrides.id,
     chat_jid: overrides.chat_jid,
@@ -57,11 +35,7 @@ describe('storeMessage', () => {
       timestamp: '2024-01-01T00:00:01.000Z',
     });
 
-    const messages = getMessagesSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].id).toBe('msg-1');
     expect(messages[0].sender).toBe('tg:123');
@@ -81,11 +55,7 @@ describe('storeMessage', () => {
       timestamp: '2024-01-01T00:00:04.000Z',
     });
 
-    const messages = getMessagesSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(0);
   });
 
@@ -103,11 +73,7 @@ describe('storeMessage', () => {
     });
 
     // Message is stored (we can retrieve it — is_from_me doesn't affect retrieval)
-    const messages = getMessagesSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
   });
 
@@ -132,11 +98,7 @@ describe('storeMessage', () => {
       timestamp: '2024-01-01T00:00:01.000Z',
     });
 
-    const messages = getMessagesSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toBe('updated');
   });
@@ -184,22 +146,14 @@ describe('getMessagesSince', () => {
   });
 
   it('returns messages after the given timestamp', () => {
-    const msgs = getMessagesSince(
-      'tg:group_test',
-      '2024-01-01T00:00:02.000Z',
-      'Andy',
-    );
+    const msgs = getMessagesSince('tg:group_test', '2024-01-01T00:00:02.000Z', 'Andy');
     // Should exclude m1, m2 (before/at timestamp), m3 (bot message)
     expect(msgs).toHaveLength(1);
     expect(msgs[0].content).toBe('third');
   });
 
   it('excludes bot messages via is_bot_message flag', () => {
-    const msgs = getMessagesSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const msgs = getMessagesSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     const botMsgs = msgs.filter((m) => m.content === 'bot reply');
     expect(botMsgs).toHaveLength(0);
   });
@@ -306,11 +260,7 @@ describe('getMessagesSince', () => {
       content: 'Andy: old bot reply',
       timestamp: '2024-01-01T00:00:05.000Z',
     });
-    const msgs = getMessagesSince(
-      'tg:group_test',
-      '2024-01-01T00:00:04.000Z',
-      'Andy',
-    );
+    const msgs = getMessagesSince('tg:group_test', '2024-01-01T00:00:04.000Z', 'Andy');
     expect(msgs).toHaveLength(0);
   });
 });
@@ -358,22 +308,14 @@ describe('getNewMessages', () => {
   });
 
   it('returns new messages across multiple groups', () => {
-    const { messages, newTimestamp } = getNewMessages(
-      ['tg:group_one', 'tg:group_two'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const { messages, newTimestamp } = getNewMessages(['tg:group_one', 'tg:group_two'], '2024-01-01T00:00:00.000Z', 'Andy');
     // Excludes bot message, returns 3 user messages
     expect(messages).toHaveLength(3);
     expect(newTimestamp).toBe('2024-01-01T00:00:04.000Z');
   });
 
   it('filters by timestamp', () => {
-    const { messages } = getNewMessages(
-      ['tg:group_one', 'tg:group_two'],
-      '2024-01-01T00:00:02.000Z',
-      'Andy',
-    );
+    const { messages } = getNewMessages(['tg:group_one', 'tg:group_two'], '2024-01-01T00:00:02.000Z', 'Andy');
     // Only g1 msg2 (after ts, not bot)
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toBe('g1 msg2');
@@ -498,12 +440,7 @@ describe('message query LIMIT', () => {
   });
 
   it('getNewMessages caps to limit and returns most recent in chronological order', () => {
-    const { messages, newTimestamp } = getNewMessages(
-      ['tg:group_test'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      3,
-    );
+    const { messages, newTimestamp } = getNewMessages(['tg:group_test'], '2024-01-01T00:00:00.000Z', 'Andy', 3);
     expect(messages).toHaveLength(3);
     expect(messages[0].content).toBe('message 8');
     expect(messages[2].content).toBe('message 10');
@@ -514,12 +451,7 @@ describe('message query LIMIT', () => {
   });
 
   it('getMessagesSince caps to limit and returns most recent in chronological order', () => {
-    const messages = getMessagesSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      3,
-    );
+    const messages = getMessagesSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy', 3);
     expect(messages).toHaveLength(3);
     expect(messages[0].content).toBe('message 8');
     expect(messages[2].content).toBe('message 10');
@@ -527,12 +459,7 @@ describe('message query LIMIT', () => {
   });
 
   it('returns all messages when count is under the limit', () => {
-    const { messages } = getNewMessages(
-      ['tg:group_test'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      50,
-    );
+    const { messages } = getNewMessages(['tg:group_test'], '2024-01-01T00:00:00.000Z', 'Andy', 50);
     expect(messages).toHaveLength(10);
   });
 });

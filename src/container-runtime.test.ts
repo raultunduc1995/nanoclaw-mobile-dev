@@ -16,13 +16,7 @@ vi.mock('child_process', () => ({
   execSync: (...args: unknown[]) => mockExecSync(...args),
 }));
 
-import {
-  CONTAINER_RUNTIME_BIN,
-  readonlyMountArgs,
-  stopContainer,
-  ensureContainerRuntimeRunning,
-  cleanupOrphans,
-} from './container-runtime.js';
+import { CONTAINER_RUNTIME_BIN, readonlyMountArgs, stopContainer, ensureContainerRuntimeRunning, cleanupOrphans } from './container-runtime.js';
 import { logger } from './logger.js';
 
 beforeEach(() => {
@@ -41,10 +35,7 @@ describe('readonlyMountArgs', () => {
 describe('stopContainer', () => {
   it('calls docker stop for valid container names', () => {
     stopContainer('nanoclaw-test-123');
-    expect(mockExecSync).toHaveBeenCalledWith(
-      `${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-test-123`,
-      { stdio: 'pipe' },
-    );
+    expect(mockExecSync).toHaveBeenCalledWith(`${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-test-123`, { stdio: 'pipe' });
   });
 
   it('rejects names with shell metacharacters', () => {
@@ -68,9 +59,7 @@ describe('ensureContainerRuntimeRunning', () => {
       stdio: 'pipe',
       timeout: 10000,
     });
-    expect(logger.debug).toHaveBeenCalledWith(
-      'Container runtime already running',
-    );
+    expect(logger.debug).toHaveBeenCalledWith('Container runtime already running');
   });
 
   it('throws when docker info fails', () => {
@@ -78,9 +67,7 @@ describe('ensureContainerRuntimeRunning', () => {
       throw new Error('Cannot connect to the Docker daemon');
     });
 
-    expect(() => ensureContainerRuntimeRunning()).toThrow(
-      'Container runtime is required but failed to start',
-    );
+    expect(() => ensureContainerRuntimeRunning()).toThrow('Container runtime is required but failed to start');
     expect(logger.error).toHaveBeenCalled();
   });
 });
@@ -90,9 +77,7 @@ describe('ensureContainerRuntimeRunning', () => {
 describe('cleanupOrphans', () => {
   it('stops orphaned nanoclaw containers', () => {
     // docker ps returns container names, one per line
-    mockExecSync.mockReturnValueOnce(
-      'nanoclaw-group1-111\nnanoclaw-group2-222\n',
-    );
+    mockExecSync.mockReturnValueOnce('nanoclaw-group1-111\nnanoclaw-group2-222\n');
     // stop calls succeed
     mockExecSync.mockReturnValue('');
 
@@ -100,20 +85,9 @@ describe('cleanupOrphans', () => {
 
     // ps + 2 stop calls
     expect(mockExecSync).toHaveBeenCalledTimes(3);
-    expect(mockExecSync).toHaveBeenNthCalledWith(
-      2,
-      `${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-group1-111`,
-      { stdio: 'pipe' },
-    );
-    expect(mockExecSync).toHaveBeenNthCalledWith(
-      3,
-      `${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-group2-222`,
-      { stdio: 'pipe' },
-    );
-    expect(logger.info).toHaveBeenCalledWith(
-      { count: 2, names: ['nanoclaw-group1-111', 'nanoclaw-group2-222'] },
-      'Stopped orphaned containers',
-    );
+    expect(mockExecSync).toHaveBeenNthCalledWith(2, `${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-group1-111`, { stdio: 'pipe' });
+    expect(mockExecSync).toHaveBeenNthCalledWith(3, `${CONTAINER_RUNTIME_BIN} stop -t 1 nanoclaw-group2-222`, { stdio: 'pipe' });
+    expect(logger.info).toHaveBeenCalledWith({ count: 2, names: ['nanoclaw-group1-111', 'nanoclaw-group2-222'] }, 'Stopped orphaned containers');
   });
 
   it('does nothing when no orphans exist', () => {
@@ -132,10 +106,7 @@ describe('cleanupOrphans', () => {
 
     cleanupOrphans(); // should not throw
 
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error) }),
-      'Failed to clean up orphaned containers',
-    );
+    expect(logger.warn).toHaveBeenCalledWith(expect.objectContaining({ err: expect.any(Error) }), 'Failed to clean up orphaned containers');
   });
 
   it('continues stopping remaining containers when one stop fails', () => {
@@ -150,9 +121,6 @@ describe('cleanupOrphans', () => {
     cleanupOrphans(); // should not throw
 
     expect(mockExecSync).toHaveBeenCalledTimes(3);
-    expect(logger.info).toHaveBeenCalledWith(
-      { count: 2, names: ['nanoclaw-a-1', 'nanoclaw-b-2'] },
-      'Stopped orphaned containers',
-    );
+    expect(logger.info).toHaveBeenCalledWith({ count: 2, names: ['nanoclaw-a-1', 'nanoclaw-b-2'] }, 'Stopped orphaned containers');
   });
 });

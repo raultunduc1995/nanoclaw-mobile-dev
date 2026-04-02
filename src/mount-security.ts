@@ -21,25 +21,7 @@ let allowlistLoadError: string | null = null;
 /**
  * Default blocked patterns - paths that should never be mounted
  */
-const DEFAULT_BLOCKED_PATTERNS = [
-  '.ssh',
-  '.gnupg',
-  '.gpg',
-  '.aws',
-  '.azure',
-  '.gcloud',
-  '.kube',
-  '.docker',
-  'credentials',
-  '.env',
-  '.netrc',
-  '.npmrc',
-  '.pypirc',
-  'id_rsa',
-  'id_ed25519',
-  'private_key',
-  '.secret',
-];
+const DEFAULT_BLOCKED_PATTERNS = ['.ssh', '.gnupg', '.gpg', '.aws', '.azure', '.gcloud', '.kube', '.docker', 'credentials', '.env', '.netrc', '.npmrc', '.pypirc', 'id_rsa', 'id_ed25519', 'private_key', '.secret'];
 
 /**
  * Load the mount allowlist from the external config location.
@@ -60,11 +42,7 @@ export function loadMountAllowlist(): MountAllowlist | null {
     if (!fs.existsSync(MOUNT_ALLOWLIST_PATH)) {
       // Do NOT cache this as an error — file may be created later without restart.
       // Only parse/structural errors are permanently cached.
-      logger.warn(
-        { path: MOUNT_ALLOWLIST_PATH },
-        'Mount allowlist not found - additional mounts will be BLOCKED. ' +
-          'Create the file to enable additional mounts.',
-      );
+      logger.warn({ path: MOUNT_ALLOWLIST_PATH }, 'Mount allowlist not found - additional mounts will be BLOCKED. ' + 'Create the file to enable additional mounts.');
       return null;
     }
 
@@ -79,14 +57,10 @@ export function loadMountAllowlist(): MountAllowlist | null {
     for (let i = 0; i < allowlist.allowedRoots.length; i++) {
       const root = allowlist.allowedRoots[i];
       if (typeof root === 'string') {
-        throw new Error(
-          `allowedRoots[${i}] is a string ("${root}") but must be an object: { "path": "${root}", "allowReadWrite": true }`,
-        );
+        throw new Error(`allowedRoots[${i}] is a string ("${root}") but must be an object: { "path": "${root}", "allowReadWrite": true }`);
       }
       if (!root || typeof root.path !== 'string') {
-        throw new Error(
-          `allowedRoots[${i}] is missing required "path" property`,
-        );
+        throw new Error(`allowedRoots[${i}] is missing required "path" property`);
       }
     }
 
@@ -99,9 +73,7 @@ export function loadMountAllowlist(): MountAllowlist | null {
     }
 
     // Merge with default blocked patterns
-    const mergedBlockedPatterns = [
-      ...new Set([...DEFAULT_BLOCKED_PATTERNS, ...allowlist.blockedPatterns]),
-    ];
+    const mergedBlockedPatterns = [...new Set([...DEFAULT_BLOCKED_PATTERNS, ...allowlist.blockedPatterns])];
     allowlist.blockedPatterns = mergedBlockedPatterns;
 
     cachedAllowlist = allowlist;
@@ -157,10 +129,7 @@ function getRealPath(p: string): string | null {
 /**
  * Check if a path matches any blocked pattern
  */
-function matchesBlockedPattern(
-  realPath: string,
-  blockedPatterns: string[],
-): string | null {
+function matchesBlockedPattern(realPath: string, blockedPatterns: string[]): string | null {
   const pathParts = realPath.split(path.sep);
 
   for (const pattern of blockedPatterns) {
@@ -183,10 +152,7 @@ function matchesBlockedPattern(
 /**
  * Check if a real path is under an allowed root
  */
-function findAllowedRoot(
-  realPath: string,
-  allowedRoots: AllowedRoot[],
-): AllowedRoot | null {
+function findAllowedRoot(realPath: string, allowedRoots: AllowedRoot[]): AllowedRoot | null {
   for (const root of allowedRoots) {
     const expandedRoot = expandPath(root.path);
     const realRoot = getRealPath(expandedRoot);
@@ -245,10 +211,7 @@ export interface MountValidationResult {
  * Validate a single additional mount against the allowlist.
  * Returns validation result with reason.
  */
-export function validateMount(
-  mount: AdditionalMount,
-  isMain: boolean,
-): MountValidationResult {
+export function validateMount(mount: AdditionalMount, isMain: boolean): MountValidationResult {
   const allowlist = loadMountAllowlist();
 
   // If no allowlist, block all additional mounts
@@ -282,10 +245,7 @@ export function validateMount(
   }
 
   // Check against blocked patterns
-  const blockedMatch = matchesBlockedPattern(
-    realPath,
-    allowlist.blockedPatterns,
-  );
+  const blockedMatch = matchesBlockedPattern(realPath, allowlist.blockedPatterns);
   if (blockedMatch !== null) {
     return {
       allowed: false,
@@ -298,9 +258,7 @@ export function validateMount(
   if (allowedRoot === null) {
     return {
       allowed: false,
-      reason: `Path "${realPath}" is not under any allowed root. Allowed roots: ${allowlist.allowedRoots
-        .map((r) => expandPath(r.path))
-        .join(', ')}`,
+      reason: `Path "${realPath}" is not under any allowed root. Allowed roots: ${allowlist.allowedRoots.map((r) => expandPath(r.path)).join(', ')}`,
     };
   }
 

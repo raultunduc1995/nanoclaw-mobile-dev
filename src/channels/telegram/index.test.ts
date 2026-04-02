@@ -73,9 +73,7 @@ import { TelegramChannel, TelegramChannelOpts } from './index.js';
 
 // --- Test helpers ---
 
-function createTestOpts(
-  overrides?: Partial<TelegramChannelOpts>,
-): TelegramChannelOpts {
+function createTestOpts(overrides?: Partial<TelegramChannelOpts>): TelegramChannelOpts {
   return {
     onMessage: vi.fn(),
     onChatMetadata: vi.fn(),
@@ -91,18 +89,7 @@ function createTestOpts(
   };
 }
 
-function createTextCtx(overrides: {
-  chatId?: number;
-  chatType?: string;
-  chatTitle?: string;
-  text: string;
-  fromId?: number;
-  firstName?: string;
-  username?: string;
-  messageId?: number;
-  date?: number;
-  entities?: any[];
-}) {
+function createTextCtx(overrides: { chatId?: number; chatType?: string; chatTitle?: string; text: string; fromId?: number; firstName?: string; username?: string; messageId?: number; date?: number; entities?: any[] }) {
   const chatId = overrides.chatId ?? 100200300;
   const chatType = overrides.chatType ?? 'group';
   return {
@@ -127,16 +114,7 @@ function createTextCtx(overrides: {
   };
 }
 
-function createMediaCtx(overrides: {
-  chatId?: number;
-  chatType?: string;
-  fromId?: number;
-  firstName?: string;
-  date?: number;
-  messageId?: number;
-  caption?: string;
-  extra?: Record<string, any>;
-}) {
+function createMediaCtx(overrides: { chatId?: number; chatType?: string; fromId?: number; firstName?: string; date?: number; messageId?: number; caption?: string; extra?: Record<string, any> }) {
   const chatId = overrides.chatId ?? 100200300;
   return {
     chat: {
@@ -168,10 +146,7 @@ async function triggerTextMessage(ctx: ReturnType<typeof createTextCtx>) {
   for (const h of handlers) await h(ctx);
 }
 
-async function triggerMediaMessage(
-  filter: string,
-  ctx: ReturnType<typeof createMediaCtx>,
-) {
+async function triggerMediaMessage(filter: string, ctx: ReturnType<typeof createMediaCtx>) {
   const handlers = currentBot().filterHandlers.get(filter) || [];
   for (const h of handlers) await h(ctx);
 }
@@ -257,13 +232,7 @@ describe('TelegramChannel', () => {
       const ctx = createTextCtx({ text: 'Hello everyone' });
       await triggerTextMessage(ctx);
 
-      expect(opts.onChatMetadata).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.any(String),
-        'Test Group',
-        'telegram',
-        true,
-      );
+      expect(opts.onChatMetadata).toHaveBeenCalledWith('tg:100200300', expect.any(String), 'Test Group', 'telegram', true);
       expect(opts.onMessage).toHaveBeenCalledWith(
         'tg:100200300',
         expect.objectContaining({
@@ -285,13 +254,7 @@ describe('TelegramChannel', () => {
       const ctx = createTextCtx({ chatId: 999999, text: 'Unknown chat' });
       await triggerTextMessage(ctx);
 
-      expect(opts.onChatMetadata).toHaveBeenCalledWith(
-        'tg:999999',
-        expect.any(String),
-        'Test Group',
-        'telegram',
-        true,
-      );
+      expect(opts.onChatMetadata).toHaveBeenCalledWith('tg:999999', expect.any(String), 'Test Group', 'telegram', true);
       expect(opts.onMessage).not.toHaveBeenCalled();
     });
 
@@ -314,10 +277,7 @@ describe('TelegramChannel', () => {
       const ctx3 = createTextCtx({ text: '/remote-control' });
       await triggerTextMessage(ctx3);
       expect(opts.onMessage).toHaveBeenCalledTimes(1);
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '/remote-control' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '/remote-control' }));
     });
 
     it('extracts sender name from first_name', async () => {
@@ -328,10 +288,7 @@ describe('TelegramChannel', () => {
       const ctx = createTextCtx({ text: 'Hi', firstName: 'Bob' });
       await triggerTextMessage(ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ sender_name: 'Bob' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ sender_name: 'Bob' }));
     });
 
     it('falls back to username when first_name missing', async () => {
@@ -343,10 +300,7 @@ describe('TelegramChannel', () => {
       ctx.from.first_name = undefined as any;
       await triggerTextMessage(ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ sender_name: 'alice_user' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ sender_name: 'alice_user' }));
     });
 
     it('falls back to user ID when name and username missing', async () => {
@@ -359,10 +313,7 @@ describe('TelegramChannel', () => {
       ctx.from.username = undefined as any;
       await triggerTextMessage(ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ sender_name: '42' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ sender_name: '42' }));
     });
 
     it('uses sender name as chat name for private chats', async () => {
@@ -407,13 +358,7 @@ describe('TelegramChannel', () => {
       });
       await triggerTextMessage(ctx);
 
-      expect(opts.onChatMetadata).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.any(String),
-        'Project Team',
-        'telegram',
-        true,
-      );
+      expect(opts.onChatMetadata).toHaveBeenCalledWith('tg:100200300', expect.any(String), 'Project Team', 'telegram', true);
     });
 
     it('converts message.date to ISO timestamp', async () => {
@@ -562,10 +507,7 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({});
       await triggerMediaMessage('message:photo', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Photo]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Photo]' }));
     });
 
     it('stores photo with caption', async () => {
@@ -576,10 +518,7 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({ caption: 'Look at this' });
       await triggerMediaMessage('message:photo', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Photo] Look at this' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Photo] Look at this' }));
     });
 
     it('stores video with placeholder', async () => {
@@ -590,10 +529,7 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({});
       await triggerMediaMessage('message:video', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Video]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Video]' }));
     });
 
     it('stores voice message with placeholder', async () => {
@@ -604,10 +540,7 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({});
       await triggerMediaMessage('message:voice', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Voice message]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Voice message]' }));
     });
 
     it('stores audio with placeholder', async () => {
@@ -618,10 +551,7 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({});
       await triggerMediaMessage('message:audio', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Audio]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Audio]' }));
     });
 
     it('stores document with filename', async () => {
@@ -634,10 +564,7 @@ describe('TelegramChannel', () => {
       });
       await triggerMediaMessage('message:document', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Document: report.pdf]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Document: report.pdf]' }));
     });
 
     it('stores document with fallback name when filename missing', async () => {
@@ -648,10 +575,7 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({ extra: { document: {} } });
       await triggerMediaMessage('message:document', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Document: file]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Document: file]' }));
     });
 
     it('stores sticker with emoji', async () => {
@@ -664,10 +588,7 @@ describe('TelegramChannel', () => {
       });
       await triggerMediaMessage('message:sticker', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Sticker 😂]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Sticker 😂]' }));
     });
 
     it('stores location with placeholder', async () => {
@@ -678,10 +599,7 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({});
       await triggerMediaMessage('message:location', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Location]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Location]' }));
     });
 
     it('stores contact with placeholder', async () => {
@@ -692,10 +610,7 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({});
       await triggerMediaMessage('message:contact', ctx);
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Contact]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Contact]' }));
     });
 
     it('ignores non-text messages from unregistered chats', async () => {
@@ -720,11 +635,7 @@ describe('TelegramChannel', () => {
 
       await channel.sendMessage('tg:100200300', 'Hello');
 
-      expect(currentBot().api.sendMessage).toHaveBeenCalledWith(
-        '100200300',
-        'Hello',
-        { parse_mode: 'Markdown' },
-      );
+      expect(currentBot().api.sendMessage).toHaveBeenCalledWith('100200300', 'Hello', { parse_mode: 'Markdown' });
     });
 
     it('strips tg: prefix from JID', async () => {
@@ -734,11 +645,7 @@ describe('TelegramChannel', () => {
 
       await channel.sendMessage('tg:-1001234567890', 'Group message');
 
-      expect(currentBot().api.sendMessage).toHaveBeenCalledWith(
-        '-1001234567890',
-        'Group message',
-        { parse_mode: 'Markdown' },
-      );
+      expect(currentBot().api.sendMessage).toHaveBeenCalledWith('-1001234567890', 'Group message', { parse_mode: 'Markdown' });
     });
 
     it('splits messages exceeding 4096 characters', async () => {
@@ -750,18 +657,8 @@ describe('TelegramChannel', () => {
       await channel.sendMessage('tg:100200300', longText);
 
       expect(currentBot().api.sendMessage).toHaveBeenCalledTimes(2);
-      expect(currentBot().api.sendMessage).toHaveBeenNthCalledWith(
-        1,
-        '100200300',
-        'x'.repeat(4096),
-        { parse_mode: 'Markdown' },
-      );
-      expect(currentBot().api.sendMessage).toHaveBeenNthCalledWith(
-        2,
-        '100200300',
-        'x'.repeat(904),
-        { parse_mode: 'Markdown' },
-      );
+      expect(currentBot().api.sendMessage).toHaveBeenNthCalledWith(1, '100200300', 'x'.repeat(4096), { parse_mode: 'Markdown' });
+      expect(currentBot().api.sendMessage).toHaveBeenNthCalledWith(2, '100200300', 'x'.repeat(904), { parse_mode: 'Markdown' });
     });
 
     it('sends exactly one message at 4096 characters', async () => {
@@ -780,14 +677,10 @@ describe('TelegramChannel', () => {
       const channel = new TelegramChannel('test-token', opts);
       await channel.connect();
 
-      currentBot().api.sendMessage.mockRejectedValueOnce(
-        new Error('Network error'),
-      );
+      currentBot().api.sendMessage.mockRejectedValueOnce(new Error('Network error'));
 
       // Should not throw
-      await expect(
-        channel.sendMessage('tg:100200300', 'Will fail'),
-      ).resolves.toBeUndefined();
+      await expect(channel.sendMessage('tg:100200300', 'Will fail')).resolves.toBeUndefined();
     });
 
     it('does nothing when bot is not initialized', async () => {
@@ -840,10 +733,7 @@ describe('TelegramChannel', () => {
 
       await channel.setTyping('tg:100200300', true);
 
-      expect(currentBot().api.sendChatAction).toHaveBeenCalledWith(
-        '100200300',
-        'typing',
-      );
+      expect(currentBot().api.sendChatAction).toHaveBeenCalledWith('100200300', 'typing');
     });
 
     it('does nothing when isTyping is false', async () => {
@@ -871,13 +761,9 @@ describe('TelegramChannel', () => {
       const channel = new TelegramChannel('test-token', opts);
       await channel.connect();
 
-      currentBot().api.sendChatAction.mockRejectedValueOnce(
-        new Error('Rate limited'),
-      );
+      currentBot().api.sendChatAction.mockRejectedValueOnce(new Error('Rate limited'));
 
-      await expect(
-        channel.setTyping('tg:100200300', true),
-      ).resolves.toBeUndefined();
+      await expect(channel.setTyping('tg:100200300', true)).resolves.toBeUndefined();
     });
   });
 
@@ -898,10 +784,7 @@ describe('TelegramChannel', () => {
 
       await handler(ctx);
 
-      expect(ctx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('tg:100200300'),
-        expect.objectContaining({ parse_mode: 'Markdown' }),
-      );
+      expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('tg:100200300'), expect.objectContaining({ parse_mode: 'Markdown' }));
     });
 
     it('/chatid shows chat type', async () => {
@@ -918,10 +801,7 @@ describe('TelegramChannel', () => {
 
       await handler(ctx);
 
-      expect(ctx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('private'),
-        expect.any(Object),
-      );
+      expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('private'), expect.any(Object));
     });
 
     it('/ping replies with bot status', async () => {

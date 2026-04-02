@@ -28,27 +28,9 @@ describe('JID ownership patterns', () => {
 
 describe('getAvailableGroups', () => {
   it('returns only groups, excludes DMs', () => {
-    storeChatMetadata(
-      'tg:group_one',
-      '2024-01-01T00:00:01.000Z',
-      'Group 1',
-      'telegram',
-      true,
-    );
-    storeChatMetadata(
-      'tg:123',
-      '2024-01-01T00:00:02.000Z',
-      'User DM',
-      'telegram',
-      false,
-    );
-    storeChatMetadata(
-      'tg:group_two',
-      '2024-01-01T00:00:03.000Z',
-      'Group 2',
-      'telegram',
-      true,
-    );
+    storeChatMetadata('tg:group_one', '2024-01-01T00:00:01.000Z', 'Group 1', 'telegram', true);
+    storeChatMetadata('tg:123', '2024-01-01T00:00:02.000Z', 'User DM', 'telegram', false);
+    storeChatMetadata('tg:group_two', '2024-01-01T00:00:03.000Z', 'Group 2', 'telegram', true);
 
     const groups = getAvailableGroups();
     expect(groups).toHaveLength(2);
@@ -59,13 +41,7 @@ describe('getAvailableGroups', () => {
 
   it('excludes __group_sync__ sentinel', () => {
     storeChatMetadata('__group_sync__', '2024-01-01T00:00:00.000Z');
-    storeChatMetadata(
-      'tg:group_test',
-      '2024-01-01T00:00:01.000Z',
-      'Group',
-      'telegram',
-      true,
-    );
+    storeChatMetadata('tg:group_test', '2024-01-01T00:00:01.000Z', 'Group', 'telegram', true);
 
     const groups = getAvailableGroups();
     expect(groups).toHaveLength(1);
@@ -73,20 +49,8 @@ describe('getAvailableGroups', () => {
   });
 
   it('marks registered groups correctly', () => {
-    storeChatMetadata(
-      'tg:group_reg',
-      '2024-01-01T00:00:01.000Z',
-      'Registered',
-      'telegram',
-      true,
-    );
-    storeChatMetadata(
-      'tg:group_unreg',
-      '2024-01-01T00:00:02.000Z',
-      'Unregistered',
-      'telegram',
-      true,
-    );
+    storeChatMetadata('tg:group_reg', '2024-01-01T00:00:01.000Z', 'Registered', 'telegram', true);
+    storeChatMetadata('tg:group_unreg', '2024-01-01T00:00:02.000Z', 'Unregistered', 'telegram', true);
 
     _setRegisteredGroups({
       'tg:group_reg': {
@@ -106,27 +70,9 @@ describe('getAvailableGroups', () => {
   });
 
   it('returns groups ordered by most recent activity', () => {
-    storeChatMetadata(
-      'tg:group_old',
-      '2024-01-01T00:00:01.000Z',
-      'Old',
-      'telegram',
-      true,
-    );
-    storeChatMetadata(
-      'tg:group_new',
-      '2024-01-01T00:00:05.000Z',
-      'New',
-      'telegram',
-      true,
-    );
-    storeChatMetadata(
-      'tg:group_mid',
-      '2024-01-01T00:00:03.000Z',
-      'Mid',
-      'telegram',
-      true,
-    );
+    storeChatMetadata('tg:group_old', '2024-01-01T00:00:01.000Z', 'Old', 'telegram', true);
+    storeChatMetadata('tg:group_new', '2024-01-01T00:00:05.000Z', 'New', 'telegram', true);
+    storeChatMetadata('tg:group_mid', '2024-01-01T00:00:03.000Z', 'Mid', 'telegram', true);
 
     const groups = getAvailableGroups();
     expect(groups[0].jid).toBe('tg:group_new');
@@ -136,27 +82,11 @@ describe('getAvailableGroups', () => {
 
   it('excludes non-group chats regardless of JID format', () => {
     // Unknown JID format stored without is_group should not appear
-    storeChatMetadata(
-      'unknown-format-123',
-      '2024-01-01T00:00:01.000Z',
-      'Unknown',
-    );
+    storeChatMetadata('unknown-format-123', '2024-01-01T00:00:01.000Z', 'Unknown');
     // Explicitly non-group with unusual JID
-    storeChatMetadata(
-      'custom:abc',
-      '2024-01-01T00:00:02.000Z',
-      'Custom DM',
-      'custom',
-      false,
-    );
+    storeChatMetadata('custom:abc', '2024-01-01T00:00:02.000Z', 'Custom DM', 'custom', false);
     // A real group for contrast
-    storeChatMetadata(
-      'tg:group_test',
-      '2024-01-01T00:00:03.000Z',
-      'Group',
-      'telegram',
-      true,
-    );
+    storeChatMetadata('tg:group_test', '2024-01-01T00:00:03.000Z', 'Group', 'telegram', true);
 
     const groups = getAvailableGroups();
     expect(groups).toHaveLength(1);

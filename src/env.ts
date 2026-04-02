@@ -10,10 +10,7 @@ function readFile(filePath: string): string | null {
   }
 }
 
-function parseEnvContent(
-  content: string,
-  keys: string[],
-): Record<string, string> {
+function parseEnvContent(content: string, keys: string[]): Record<string, string> {
   const result: Record<string, string> = {};
   const wanted = new Set(keys);
 
@@ -25,10 +22,7 @@ function parseEnvContent(
     const key = trimmed.slice(0, eqIdx).trim();
     if (!wanted.has(key)) continue;
     let value = trimmed.slice(eqIdx + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
     if (value) result[key] = value;
@@ -43,10 +37,7 @@ function parseEnvContent(
  * do with the values. This keeps secrets out of the process environment
  * so they don't leak to child processes.
  */
-export function readEnvFile(
-  keys: string[],
-  fileName: string = '.env',
-): Record<string, string> {
+export function readEnvFile(keys: string[], fileName: string = '.env'): Record<string, string> {
   const envFile = path.join(process.cwd(), fileName);
   const content = readFile(envFile);
   if (content === null) {

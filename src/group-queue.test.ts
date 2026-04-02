@@ -298,12 +298,7 @@ describe('GroupQueue', () => {
     await vi.advanceTimersByTimeAsync(10);
 
     // Register a process so closeStdin has a groupFolder
-    queue.registerProcess(
-      'tg:group_one',
-      {} as any,
-      'container-1',
-      'test-group',
-    );
+    queue.registerProcess('tg:group_one', {} as any, 'container-1', 'test-group');
 
     // Enqueue a task while container is active but NOT idle
     const taskFn = vi.fn(async () => {});
@@ -311,9 +306,7 @@ describe('GroupQueue', () => {
 
     // _close should NOT have been written (container is working, not idle)
     const writeFileSync = vi.mocked(fs.default.writeFileSync);
-    const closeWrites = writeFileSync.mock.calls.filter(
-      (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
-    );
+    const closeWrites = writeFileSync.mock.calls.filter((call) => typeof call[0] === 'string' && call[0].endsWith('_close'));
     expect(closeWrites).toHaveLength(0);
 
     resolveProcess!();
@@ -338,12 +331,7 @@ describe('GroupQueue', () => {
     await vi.advanceTimersByTimeAsync(10);
 
     // Register process and mark idle
-    queue.registerProcess(
-      'tg:group_one',
-      {} as any,
-      'container-1',
-      'test-group',
-    );
+    queue.registerProcess('tg:group_one', {} as any, 'container-1', 'test-group');
     queue.notifyIdle('tg:group_one');
 
     // Clear previous writes, then enqueue a task
@@ -354,9 +342,7 @@ describe('GroupQueue', () => {
     queue.enqueueTask('tg:group_one', 'task-1', taskFn);
 
     // _close SHOULD have been written (container is idle)
-    const closeWrites = writeFileSync.mock.calls.filter(
-      (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
-    );
+    const closeWrites = writeFileSync.mock.calls.filter((call) => typeof call[0] === 'string' && call[0].endsWith('_close'));
     expect(closeWrites).toHaveLength(1);
 
     resolveProcess!();
@@ -377,12 +363,7 @@ describe('GroupQueue', () => {
     queue.setProcessMessagesFn(processMessages);
     queue.enqueueMessageCheck('tg:group_one');
     await vi.advanceTimersByTimeAsync(10);
-    queue.registerProcess(
-      'tg:group_one',
-      {} as any,
-      'container-1',
-      'test-group',
-    );
+    queue.registerProcess('tg:group_one', {} as any, 'container-1', 'test-group');
 
     // Container becomes idle
     queue.notifyIdle('tg:group_one');
@@ -397,9 +378,7 @@ describe('GroupQueue', () => {
     const taskFn = vi.fn(async () => {});
     queue.enqueueTask('tg:group_one', 'task-1', taskFn);
 
-    const closeWrites = writeFileSync.mock.calls.filter(
-      (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
-    );
+    const closeWrites = writeFileSync.mock.calls.filter((call) => typeof call[0] === 'string' && call[0].endsWith('_close'));
     expect(closeWrites).toHaveLength(0);
 
     resolveProcess!();
@@ -418,12 +397,7 @@ describe('GroupQueue', () => {
     // Start a task (sets isTaskContainer = true)
     queue.enqueueTask('tg:group_one', 'task-1', taskFn);
     await vi.advanceTimersByTimeAsync(10);
-    queue.registerProcess(
-      'tg:group_one',
-      {} as any,
-      'container-1',
-      'test-group',
-    );
+    queue.registerProcess('tg:group_one', {} as any, 'container-1', 'test-group');
 
     // sendMessage should return false — user messages must not go to task containers
     const result = queue.sendMessage('tg:group_one', 'hello');
@@ -451,12 +425,7 @@ describe('GroupQueue', () => {
     await vi.advanceTimersByTimeAsync(10);
 
     // Register process and enqueue a task (no idle yet — no preemption)
-    queue.registerProcess(
-      'tg:group_one',
-      {} as any,
-      'container-1',
-      'test-group',
-    );
+    queue.registerProcess('tg:group_one', {} as any, 'container-1', 'test-group');
 
     const writeFileSync = vi.mocked(fs.default.writeFileSync);
     writeFileSync.mockClear();
@@ -464,18 +433,14 @@ describe('GroupQueue', () => {
     const taskFn = vi.fn(async () => {});
     queue.enqueueTask('tg:group_one', 'task-1', taskFn);
 
-    let closeWrites = writeFileSync.mock.calls.filter(
-      (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
-    );
+    let closeWrites = writeFileSync.mock.calls.filter((call) => typeof call[0] === 'string' && call[0].endsWith('_close'));
     expect(closeWrites).toHaveLength(0);
 
     // Now container becomes idle — should preempt because task is pending
     writeFileSync.mockClear();
     queue.notifyIdle('tg:group_one');
 
-    closeWrites = writeFileSync.mock.calls.filter(
-      (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
-    );
+    closeWrites = writeFileSync.mock.calls.filter((call) => typeof call[0] === 'string' && call[0].endsWith('_close'));
     expect(closeWrites).toHaveLength(1);
 
     resolveProcess!();

@@ -6,25 +6,11 @@ import { ChildProcess, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-import {
-  CONTAINER_IMAGE,
-  CONTAINER_MAX_OUTPUT_SIZE,
-  CONTAINER_TIMEOUT,
-  DATA_DIR,
-  ENABLE_MAC_CONTROL,
-  GROUPS_DIR,
-  IDLE_TIMEOUT,
-  TIMEZONE,
-} from './config.js';
+import { CONTAINER_IMAGE, CONTAINER_MAX_OUTPUT_SIZE, CONTAINER_TIMEOUT, DATA_DIR, ENABLE_MAC_CONTROL, GROUPS_DIR, IDLE_TIMEOUT, TIMEZONE } from './config.js';
 import { readEnvFile } from './env.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
-import {
-  CONTAINER_RUNTIME_BIN,
-  hostGatewayArgs,
-  readonlyMountArgs,
-  stopContainer,
-} from './container-runtime.js';
+import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
 
@@ -54,10 +40,7 @@ interface VolumeMount {
   readonly: boolean;
 }
 
-function buildVolumeMounts(
-  group: RegisteredGroup,
-  isMain: boolean,
-): VolumeMount[] {
+function buildVolumeMounts(group: RegisteredGroup, isMain: boolean): VolumeMount[] {
   const mounts: VolumeMount[] = [];
   const projectRoot = process.cwd();
   const groupDir = resolveGroupFolderPath(group.folder);
@@ -91,7 +74,6 @@ function buildVolumeMounts(
       containerPath: '/workspace/group',
       readonly: false,
     });
-
   } else {
     // Other groups only get their own folder
     mounts.push({
@@ -122,12 +104,7 @@ function buildVolumeMounts(
 
   // Per-group Claude container config (isolated from other groups)
   // Each group gets their own .claude/ to prevent cross-group access
-  const groupConfigDir = path.join(
-    DATA_DIR,
-    'claude-container-config',
-    group.folder,
-    '.claude',
-  );
+  const groupConfigDir = path.join(DATA_DIR, 'claude-container-config', group.folder, '.claude');
   fs.mkdirSync(groupConfigDir, { recursive: true });
   const settingsFile = path.join(groupConfigDir, 'settings.json');
   if (!fs.existsSync(settingsFile)) {
@@ -185,26 +162,12 @@ function buildVolumeMounts(
   // Copy agent-runner source into a per-group writable location so agents
   // can customize it (add tools, change behavior) without affecting other
   // groups. Recompiled on container startup via entrypoint.sh.
-  const agentRunnerSrc = path.join(
-    projectRoot,
-    'container',
-    'agent-runner',
-    'src',
-  );
-  const groupAgentRunnerDir = path.join(
-    DATA_DIR,
-    'claude-container-config',
-    group.folder,
-    'agent-runner-src',
-  );
+  const agentRunnerSrc = path.join(projectRoot, 'container', 'agent-runner', 'src');
+  const groupAgentRunnerDir = path.join(DATA_DIR, 'claude-container-config', group.folder, 'agent-runner-src');
   if (fs.existsSync(agentRunnerSrc)) {
     const srcIndex = path.join(agentRunnerSrc, 'index.ts');
     const cachedIndex = path.join(groupAgentRunnerDir, 'index.ts');
-    const needsCopy =
-      !fs.existsSync(groupAgentRunnerDir) ||
-      !fs.existsSync(cachedIndex) ||
-      (fs.existsSync(srcIndex) &&
-        fs.statSync(srcIndex).mtimeMs > fs.statSync(cachedIndex).mtimeMs);
+    const needsCopy = !fs.existsSync(groupAgentRunnerDir) || !fs.existsSync(cachedIndex) || (fs.existsSync(srcIndex) && fs.statSync(srcIndex).mtimeMs > fs.statSync(cachedIndex).mtimeMs);
     if (needsCopy) {
       fs.cpSync(agentRunnerSrc, groupAgentRunnerDir, { recursive: true });
     }
@@ -217,43 +180,29 @@ function buildVolumeMounts(
 
   // Additional mounts validated against external allowlist (tamper-proof from containers)
   if (group.containerConfig?.additionalMounts) {
-    const validatedMounts = validateAdditionalMounts(
-      group.containerConfig.additionalMounts,
-      group.name,
-      isMain,
-    );
+    const validatedMounts = validateAdditionalMounts(group.containerConfig.additionalMounts, group.name, isMain);
     mounts.push(...validatedMounts);
   }
 
   return mounts;
 }
 
-function buildContainerArgs(
-  mounts: VolumeMount[],
-  containerName: string,
-): string[] {
+function buildContainerArgs(mounts: VolumeMount[], containerName: string): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
 
   // Pass host timezone so container's local time matches the user's
   args.push('-e', `TZ=${TIMEZONE}`);
 
   // Pass credentials directly from host environment / .env
-  const envCreds = readEnvFile([
-    'CLAUDE_CODE_OAUTH_TOKEN',
-    'ANTHROPIC_API_KEY',
-  ]);
-  const oauthToken =
-    process.env.CLAUDE_CODE_OAUTH_TOKEN || envCreds.CLAUDE_CODE_OAUTH_TOKEN;
+  const envCreds = readEnvFile(['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY']);
+  const oauthToken = process.env.CLAUDE_CODE_OAUTH_TOKEN || envCreds.CLAUDE_CODE_OAUTH_TOKEN;
   const apiKey = process.env.ANTHROPIC_API_KEY || envCreds.ANTHROPIC_API_KEY;
   if (oauthToken) {
     args.push('-e', `CLAUDE_CODE_OAUTH_TOKEN=${oauthToken}`);
   } else if (apiKey) {
     args.push('-e', `ANTHROPIC_API_KEY=${apiKey}`);
   } else {
-    logger.warn(
-      { containerName },
-      'No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY found — container will have no credentials',
-    );
+    logger.warn({ containerName }, 'No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY found — container will have no credentials');
   }
 
   if (ENABLE_MAC_CONTROL) {
@@ -292,12 +241,7 @@ function buildContainerArgs(
   return args;
 }
 
-export async function runContainerAgent(
-  group: RegisteredGroup,
-  input: ContainerInput,
-  onProcess: (proc: ChildProcess, containerName: string) => void,
-  onOutput?: (output: ContainerOutput) => Promise<void>,
-): Promise<ContainerOutput> {
+export async function runContainerAgent(group: RegisteredGroup, input: ContainerInput, onProcess: (proc: ChildProcess, containerName: string) => void, onOutput?: (output: ContainerOutput) => Promise<void>): Promise<ContainerOutput> {
   const startTime = Date.now();
 
   const groupDir = resolveGroupFolderPath(group.folder);
@@ -312,10 +256,7 @@ export async function runContainerAgent(
     {
       group: group.name,
       containerName,
-      mounts: mounts.map(
-        (m) =>
-          `${m.hostPath} -> ${m.containerPath}${m.readonly ? ' (ro)' : ''}`,
-      ),
+      mounts: mounts.map((m) => `${m.hostPath} -> ${m.containerPath}${m.readonly ? ' (ro)' : ''}`),
       containerArgs: containerArgs.join(' '),
     },
     'Container mount configuration',
@@ -362,10 +303,7 @@ export async function runContainerAgent(
         if (chunk.length > remaining) {
           stdout += chunk.slice(0, remaining);
           stdoutTruncated = true;
-          logger.warn(
-            { group: group.name, size: stdout.length },
-            'Container stdout truncated due to size limit',
-          );
+          logger.warn({ group: group.name, size: stdout.length }, 'Container stdout truncated due to size limit');
         } else {
           stdout += chunk;
         }
@@ -379,9 +317,7 @@ export async function runContainerAgent(
           const endIdx = parseBuffer.indexOf(OUTPUT_END_MARKER, startIdx);
           if (endIdx === -1) break; // Incomplete pair, wait for more data
 
-          const jsonStr = parseBuffer
-            .slice(startIdx + OUTPUT_START_MARKER.length, endIdx)
-            .trim();
+          const jsonStr = parseBuffer.slice(startIdx + OUTPUT_START_MARKER.length, endIdx).trim();
           parseBuffer = parseBuffer.slice(endIdx + OUTPUT_END_MARKER.length);
 
           try {
@@ -393,10 +329,7 @@ export async function runContainerAgent(
             // so idle timers start even for "silent" query completions.
             outputChain = outputChain.then(() => onOutput(parsed));
           } catch (err) {
-            logger.warn(
-              { group: group.name, error: err },
-              'Failed to parse streamed output chunk',
-            );
+            logger.warn({ group: group.name, error: err }, 'Failed to parse streamed output chunk');
           }
         }
       }
@@ -415,10 +348,7 @@ export async function runContainerAgent(
       if (chunk.length > remaining) {
         stderr += chunk.slice(0, remaining);
         stderrTruncated = true;
-        logger.warn(
-          { group: group.name, size: stderr.length },
-          'Container stderr truncated due to size limit',
-        );
+        logger.warn({ group: group.name, size: stderr.length }, 'Container stderr truncated due to size limit');
       } else {
         stderr += chunk;
       }
@@ -433,17 +363,11 @@ export async function runContainerAgent(
 
     const killOnTimeout = () => {
       timedOut = true;
-      logger.error(
-        { group: group.name, containerName },
-        'Container timeout, stopping gracefully',
-      );
+      logger.error({ group: group.name, containerName }, 'Container timeout, stopping gracefully');
       try {
         stopContainer(containerName);
       } catch (err) {
-        logger.warn(
-          { group: group.name, containerName, err },
-          'Graceful stop failed, force killing',
-        );
+        logger.warn({ group: group.name, containerName, err }, 'Graceful stop failed, force killing');
         container.kill('SIGKILL');
       }
     };
@@ -463,27 +387,13 @@ export async function runContainerAgent(
       if (timedOut) {
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
         const timeoutLog = path.join(logsDir, `container-${ts}.log`);
-        fs.writeFileSync(
-          timeoutLog,
-          [
-            `=== Container Run Log (TIMEOUT) ===`,
-            `Timestamp: ${new Date().toISOString()}`,
-            `Group: ${group.name}`,
-            `Container: ${containerName}`,
-            `Duration: ${duration}ms`,
-            `Exit Code: ${code}`,
-            `Had Streaming Output: ${hadStreamingOutput}`,
-          ].join('\n'),
-        );
+        fs.writeFileSync(timeoutLog, [`=== Container Run Log (TIMEOUT) ===`, `Timestamp: ${new Date().toISOString()}`, `Group: ${group.name}`, `Container: ${containerName}`, `Duration: ${duration}ms`, `Exit Code: ${code}`, `Had Streaming Output: ${hadStreamingOutput}`].join('\n'));
 
         // Timeout after output = idle cleanup, not failure.
         // The agent already sent its response; this is just the
         // container being reaped after the idle period expired.
         if (hadStreamingOutput) {
-          logger.info(
-            { group: group.name, containerName, duration, code },
-            'Container timed out after output (idle cleanup)',
-          );
+          logger.info({ group: group.name, containerName, duration, code }, 'Container timed out after output (idle cleanup)');
           outputChain.then(() => {
             resolve({
               status: 'success',
@@ -493,10 +403,7 @@ export async function runContainerAgent(
           return;
         }
 
-        logger.error(
-          { group: group.name, containerName, duration, code },
-          'Container timed out with no output',
-        );
+        logger.error({ group: group.name, containerName, duration, code }, 'Container timed out with no output');
 
         resolve({
           status: 'error',
@@ -508,20 +415,9 @@ export async function runContainerAgent(
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const logFile = path.join(logsDir, `container-${timestamp}.log`);
-      const isVerbose =
-        process.env.LOG_LEVEL === 'debug' || process.env.LOG_LEVEL === 'trace';
+      const isVerbose = process.env.LOG_LEVEL === 'debug' || process.env.LOG_LEVEL === 'trace';
 
-      const logLines = [
-        `=== Container Run Log ===`,
-        `Timestamp: ${new Date().toISOString()}`,
-        `Group: ${group.name}`,
-        `IsMain: ${input.isMain}`,
-        `Duration: ${duration}ms`,
-        `Exit Code: ${code}`,
-        `Stdout Truncated: ${stdoutTruncated}`,
-        `Stderr Truncated: ${stderrTruncated}`,
-        ``,
-      ];
+      const logLines = [`=== Container Run Log ===`, `Timestamp: ${new Date().toISOString()}`, `Group: ${group.name}`, `IsMain: ${input.isMain}`, `Duration: ${duration}ms`, `Exit Code: ${code}`, `Stdout Truncated: ${stdoutTruncated}`, `Stderr Truncated: ${stderrTruncated}`, ``];
 
       const isError = code !== 0;
 
@@ -532,23 +428,14 @@ export async function runContainerAgent(
         if (isVerbose) {
           logLines.push(`=== Input ===`, JSON.stringify(input, null, 2), ``);
         } else {
-          logLines.push(
-            `=== Input Summary ===`,
-            `Prompt length: ${input.prompt.length} chars`,
-            ``,
-          );
+          logLines.push(`=== Input Summary ===`, `Prompt length: ${input.prompt.length} chars`, ``);
         }
         logLines.push(
           `=== Container Args ===`,
           containerArgs.join(' '),
           ``,
           `=== Mounts ===`,
-          mounts
-            .map(
-              (m) =>
-                `${m.hostPath} -> ${m.containerPath}${m.readonly ? ' (ro)' : ''}`,
-            )
-            .join('\n'),
+          mounts.map((m) => `${m.hostPath} -> ${m.containerPath}${m.readonly ? ' (ro)' : ''}`).join('\n'),
           ``,
           `=== Stderr${stderrTruncated ? ' (TRUNCATED)' : ''} ===`,
           stderr,
@@ -557,16 +444,7 @@ export async function runContainerAgent(
           stdout,
         );
       } else {
-        logLines.push(
-          `=== Input Summary ===`,
-          `Prompt length: ${input.prompt.length} chars`,
-          ``,
-          `=== Mounts ===`,
-          mounts
-            .map((m) => `${m.containerPath}${m.readonly ? ' (ro)' : ''}`)
-            .join('\n'),
-          ``,
-        );
+        logLines.push(`=== Input Summary ===`, `Prompt length: ${input.prompt.length} chars`, ``, `=== Mounts ===`, mounts.map((m) => `${m.containerPath}${m.readonly ? ' (ro)' : ''}`).join('\n'), ``);
       }
 
       fs.writeFileSync(logFile, logLines.join('\n'));
@@ -596,10 +474,7 @@ export async function runContainerAgent(
       // Streaming mode: wait for output chain to settle, return completion marker
       if (onOutput) {
         outputChain.then(() => {
-          logger.info(
-            { group: group.name, duration },
-            'Container completed (streaming mode)',
-          );
+          logger.info({ group: group.name, duration }, 'Container completed (streaming mode)');
           resolve({
             status: 'success',
             result: null,
@@ -616,9 +491,7 @@ export async function runContainerAgent(
 
         let jsonLine: string;
         if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-          jsonLine = stdout
-            .slice(startIdx + OUTPUT_START_MARKER.length, endIdx)
-            .trim();
+          jsonLine = stdout.slice(startIdx + OUTPUT_START_MARKER.length, endIdx).trim();
         } else {
           // Fallback: last non-empty line (backwards compatibility)
           const lines = stdout.trim().split('\n');
@@ -659,10 +532,7 @@ export async function runContainerAgent(
 
     container.on('error', (err) => {
       clearTimeout(timeout);
-      logger.error(
-        { group: group.name, containerName, error: err },
-        'Container spawn error',
-      );
+      logger.error({ group: group.name, containerName, error: err }, 'Container spawn error');
       resolve({
         status: 'error',
         result: null,
@@ -691,9 +561,7 @@ export function writeTasksSnapshot(
   fs.mkdirSync(groupIpcDir, { recursive: true });
 
   // Main sees all tasks, others only see their own
-  const filteredTasks = isMain
-    ? tasks
-    : tasks.filter((t) => t.groupFolder === groupFolder);
+  const filteredTasks = isMain ? tasks : tasks.filter((t) => t.groupFolder === groupFolder);
 
   const tasksFile = path.join(groupIpcDir, 'current_tasks.json');
   fs.writeFileSync(tasksFile, JSON.stringify(filteredTasks, null, 2));
@@ -711,12 +579,7 @@ export interface AvailableGroup {
  * Only main group can see all available groups (for activation).
  * Non-main groups only see their own registration status.
  */
-export function writeGroupsSnapshot(
-  groupFolder: string,
-  isMain: boolean,
-  groups: AvailableGroup[],
-  _registeredJids: Set<string>,
-): void {
+export function writeGroupsSnapshot(groupFolder: string, isMain: boolean, groups: AvailableGroup[], _registeredJids: Set<string>): void {
   const groupIpcDir = resolveGroupIpcPath(groupFolder);
   fs.mkdirSync(groupIpcDir, { recursive: true });
 

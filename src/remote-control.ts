@@ -60,10 +60,7 @@ export function restoreRemoteControl(): void {
     const session: RemoteControlSession = JSON.parse(data);
     if (session.pid && isProcessAlive(session.pid)) {
       activeSession = session;
-      logger.info(
-        { pid: session.pid, url: session.url },
-        'Restored Remote Control session from previous run',
-      );
+      logger.info({ pid: session.pid, url: session.url }, 'Restored Remote Control session from previous run');
     } else {
       clearState();
     }
@@ -86,11 +83,7 @@ export function _getStateFilePath(): string {
   return STATE_FILE;
 }
 
-export async function startRemoteControl(
-  sender: string,
-  chatJid: string,
-  cwd: string,
-): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+export async function startRemoteControl(sender: string, chatJid: string, cwd: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   if (activeSession) {
     // Verify the process is still alive
     if (isProcessAlive(activeSession.pid)) {
@@ -169,10 +162,7 @@ export async function startRemoteControl(
         activeSession = session;
         saveState(session);
 
-        logger.info(
-          { url: match[0], pid, sender, chatJid },
-          'Remote Control session started',
-        );
+        logger.info({ url: match[0], pid, sender, chatJid }, 'Remote Control session started');
         resolve({ ok: true, url: match[0] });
         return;
       }

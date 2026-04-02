@@ -3,13 +3,7 @@ import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import {
-  isSenderAllowed,
-  isTriggerAllowed,
-  loadSenderAllowlist,
-  SenderAllowlistConfig,
-  shouldDropMessage,
-} from './sender-allowlist.js';
+import { isSenderAllowed, isTriggerAllowed, loadSenderAllowlist, SenderAllowlistConfig, shouldDropMessage } from './sender-allowlist.js';
 
 let tmpDir: string;
 
