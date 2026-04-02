@@ -35,11 +35,7 @@ describe('messages', () => {
       timestamp: '2024-01-01T00:00:01.000Z',
     });
 
-    const messages = db.messages.getSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = db.messages.getSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].id).toBe('msg-1');
     expect(messages[0].sender).toBe('tg:123');
@@ -57,11 +53,7 @@ describe('messages', () => {
       timestamp: '2024-01-01T00:00:04.000Z',
     });
 
-    const messages = db.messages.getSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = db.messages.getSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(0);
   });
 
@@ -76,11 +68,7 @@ describe('messages', () => {
       isFromMe: true,
     });
 
-    const messages = db.messages.getSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = db.messages.getSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
   });
 
@@ -101,11 +89,7 @@ describe('messages', () => {
       timestamp: '2024-01-01T00:00:01.000Z',
     });
 
-    const messages = db.messages.getSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = db.messages.getSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toBe('updated');
   });
@@ -154,21 +138,13 @@ describe('getSince', () => {
   });
 
   it('returns messages after the given timestamp', () => {
-    const msgs = db.messages.getSince(
-      'tg:group_test',
-      '2024-01-01T00:00:02.000Z',
-      'Andy',
-    );
+    const msgs = db.messages.getSince('tg:group_test', '2024-01-01T00:00:02.000Z', 'Andy');
     expect(msgs).toHaveLength(1);
     expect(msgs[0].content).toBe('third');
   });
 
   it('excludes bot messages', () => {
-    const msgs = db.messages.getSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const msgs = db.messages.getSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy');
     const botMsgs = msgs.filter((m) => m.content === 'bot reply');
     expect(botMsgs).toHaveLength(0);
   });
@@ -228,11 +204,7 @@ describe('getSince', () => {
       content: 'Andy: old bot reply',
       timestamp: '2024-01-01T00:00:05.000Z',
     });
-    const msgs = db.messages.getSince(
-      'tg:group_test',
-      '2024-01-01T00:00:04.000Z',
-      'Andy',
-    );
+    const msgs = db.messages.getSince('tg:group_test', '2024-01-01T00:00:04.000Z', 'Andy');
     expect(msgs).toHaveLength(0);
   });
 });
@@ -275,21 +247,13 @@ describe('getNew', () => {
   });
 
   it('returns new messages across multiple groups', () => {
-    const { messages, newTimestamp } = db.messages.getNew(
-      ['tg:group_one', 'tg:group_two'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const { messages, newTimestamp } = db.messages.getNew(['tg:group_one', 'tg:group_two'], '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(3);
     expect(newTimestamp).toBe('2024-01-01T00:00:04.000Z');
   });
 
   it('filters by timestamp', () => {
-    const { messages } = db.messages.getNew(
-      ['tg:group_one', 'tg:group_two'],
-      '2024-01-01T00:00:02.000Z',
-      'Andy',
-    );
+    const { messages } = db.messages.getNew(['tg:group_one', 'tg:group_two'], '2024-01-01T00:00:02.000Z', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toBe('g1 msg2');
   });
@@ -414,12 +378,7 @@ describe('message query LIMIT', () => {
   });
 
   it('getNew caps to limit and returns most recent in chronological order', () => {
-    const { messages, newTimestamp } = db.messages.getNew(
-      ['tg:group_test'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      3,
-    );
+    const { messages, newTimestamp } = db.messages.getNew(['tg:group_test'], '2024-01-01T00:00:00.000Z', 'Andy', 3);
     expect(messages).toHaveLength(3);
     expect(messages[0].content).toBe('message 8');
     expect(messages[2].content).toBe('message 10');
@@ -428,12 +387,7 @@ describe('message query LIMIT', () => {
   });
 
   it('getSince caps to limit and returns most recent in chronological order', () => {
-    const messages = db.messages.getSince(
-      'tg:group_test',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      3,
-    );
+    const messages = db.messages.getSince('tg:group_test', '2024-01-01T00:00:00.000Z', 'Andy', 3);
     expect(messages).toHaveLength(3);
     expect(messages[0].content).toBe('message 8');
     expect(messages[2].content).toBe('message 10');
@@ -441,12 +395,7 @@ describe('message query LIMIT', () => {
   });
 
   it('returns all messages when count is under the limit', () => {
-    const { messages } = db.messages.getNew(
-      ['tg:group_test'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      50,
-    );
+    const { messages } = db.messages.getNew(['tg:group_test'], '2024-01-01T00:00:00.000Z', 'Andy', 50);
     expect(messages).toHaveLength(10);
   });
 });

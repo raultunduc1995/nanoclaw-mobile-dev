@@ -21,29 +21,15 @@ function toChat(row: ChatRow): ChatInfo {
 }
 
 export interface ChatsLocalResource {
-  storeMetadata(
-    chatJid: string,
-    timestamp: string,
-    name?: string,
-    channel?: string,
-    isGroup?: boolean,
-  ): void;
+  storeMetadata(chatJid: string, timestamp: string, name?: string, channel?: string, isGroup?: boolean): void;
   updateName(chatJid: string, name: string): void;
   getAll(): ChatInfo[];
   getLastGroupSync(): string | null;
   setLastGroupSync(): void;
 }
 
-export const createChatsLocalResource = (
-  db: Database.Database,
-): ChatsLocalResource => ({
-  storeMetadata: (
-    chatJid: string,
-    timestamp: string,
-    name?: string,
-    channel?: string,
-    isGroup?: boolean,
-  ) => {
+export const createChatsLocalResource = (db: Database.Database): ChatsLocalResource => ({
+  storeMetadata: (chatJid: string, timestamp: string, name?: string, channel?: string, isGroup?: boolean) => {
     const ch = channel ?? null;
     const group = isGroup === undefined ? null : isGroup ? 1 : 0;
 
@@ -85,18 +71,12 @@ export const createChatsLocalResource = (
   },
 
   getLastGroupSync: (): string | null => {
-    const row = db
-      .prepare(
-        `SELECT last_message_time FROM chats WHERE jid = '__group_sync__'`,
-      )
-      .get() as { last_message_time: string } | undefined;
+    const row = db.prepare(`SELECT last_message_time FROM chats WHERE jid = '__group_sync__'`).get() as { last_message_time: string } | undefined;
     return row?.last_message_time || null;
   },
 
   setLastGroupSync: (): void => {
     const now = new Date().toISOString();
-    db.prepare(
-      `INSERT OR REPLACE INTO chats (jid, name, last_message_time) VALUES ('__group_sync__', '__group_sync__', ?)`,
-    ).run(now);
+    db.prepare(`INSERT OR REPLACE INTO chats (jid, name, last_message_time) VALUES ('__group_sync__', '__group_sync__', ?)`).run(now);
   },
 });

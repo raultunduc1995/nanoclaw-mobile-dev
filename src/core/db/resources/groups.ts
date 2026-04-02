@@ -21,9 +21,7 @@ function toGroup(row: GroupRow): RegisteredGroup & { jid: string } {
     name: row.name,
     folder: row.folder,
     addedAt: row.added_at,
-    containerConfig: row.container_config
-      ? JSON.parse(row.container_config)
-      : undefined,
+    containerConfig: row.container_config ? JSON.parse(row.container_config) : undefined,
     isMain: row.is_main === 1,
   };
 }
@@ -34,19 +32,12 @@ export interface GroupsLocalResource {
   getAll(): Record<string, RegisteredGroup>;
 }
 
-export const createGroupsLocalResource = (
-  db: Database.Database,
-): GroupsLocalResource => ({
+export const createGroupsLocalResource = (db: Database.Database): GroupsLocalResource => ({
   get: (jid: string): (RegisteredGroup & { jid: string }) | undefined => {
-    const row = db
-      .prepare('SELECT * FROM registered_groups WHERE jid = ?')
-      .get(jid) as GroupRow | undefined;
+    const row = db.prepare('SELECT * FROM registered_groups WHERE jid = ?').get(jid) as GroupRow | undefined;
     if (!row) return undefined;
     if (!isValidGroupFolder(row.folder)) {
-      logger.warn(
-        { jid: row.jid, folder: row.folder },
-        'Skipping registered group with invalid folder',
-      );
+      logger.warn({ jid: row.jid, folder: row.folder }, 'Skipping registered group with invalid folder');
       return undefined;
     }
     return toGroup(row);
@@ -72,25 +63,18 @@ export const createGroupsLocalResource = (
   },
 
   getAll: (): Record<string, RegisteredGroup> => {
-    const rows = db
-      .prepare('SELECT * FROM registered_groups')
-      .all() as GroupRow[];
+    const rows = db.prepare('SELECT * FROM registered_groups').all() as GroupRow[];
     const result: Record<string, RegisteredGroup> = {};
     for (const row of rows) {
       if (!isValidGroupFolder(row.folder)) {
-        logger.warn(
-          { jid: row.jid, folder: row.folder },
-          'Skipping registered group with invalid folder',
-        );
+        logger.warn({ jid: row.jid, folder: row.folder }, 'Skipping registered group with invalid folder');
         continue;
       }
       result[row.jid] = {
         name: row.name,
         folder: row.folder,
         addedAt: row.added_at,
-        containerConfig: row.container_config
-          ? JSON.parse(row.container_config)
-          : undefined,
+        containerConfig: row.container_config ? JSON.parse(row.container_config) : undefined,
         isMain: row.is_main === 1,
       };
     }

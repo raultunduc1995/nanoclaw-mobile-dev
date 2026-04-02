@@ -168,29 +168,17 @@ describe('pause_task authorization', () => {
   });
 
   it('main group can pause any task', async () => {
-    await handler.processTaskCommand(
-      { type: 'pause_task', taskId: 'task-other' },
-      'telegram_main',
-      true,
-    );
+    await handler.processTaskCommand({ type: 'pause_task', taskId: 'task-other' }, 'telegram_main', true);
     expect(db.tasks.getById('task-other')!.status).toBe('paused');
   });
 
   it('non-main group can pause its own task', async () => {
-    await handler.processTaskCommand(
-      { type: 'pause_task', taskId: 'task-other' },
-      'other-group',
-      false,
-    );
+    await handler.processTaskCommand({ type: 'pause_task', taskId: 'task-other' }, 'other-group', false);
     expect(db.tasks.getById('task-other')!.status).toBe('paused');
   });
 
   it('non-main group cannot pause another groups task', async () => {
-    await handler.processTaskCommand(
-      { type: 'pause_task', taskId: 'task-main' },
-      'other-group',
-      false,
-    );
+    await handler.processTaskCommand({ type: 'pause_task', taskId: 'task-main' }, 'other-group', false);
     expect(db.tasks.getById('task-main')!.status).toBe('active');
   });
 });
@@ -215,29 +203,17 @@ describe('resume_task authorization', () => {
   });
 
   it('main group can resume any task', async () => {
-    await handler.processTaskCommand(
-      { type: 'resume_task', taskId: 'task-paused' },
-      'telegram_main',
-      true,
-    );
+    await handler.processTaskCommand({ type: 'resume_task', taskId: 'task-paused' }, 'telegram_main', true);
     expect(db.tasks.getById('task-paused')!.status).toBe('active');
   });
 
   it('non-main group can resume its own task', async () => {
-    await handler.processTaskCommand(
-      { type: 'resume_task', taskId: 'task-paused' },
-      'other-group',
-      false,
-    );
+    await handler.processTaskCommand({ type: 'resume_task', taskId: 'task-paused' }, 'other-group', false);
     expect(db.tasks.getById('task-paused')!.status).toBe('active');
   });
 
   it('non-main group cannot resume another groups task', async () => {
-    await handler.processTaskCommand(
-      { type: 'resume_task', taskId: 'task-paused' },
-      'third-group',
-      false,
-    );
+    await handler.processTaskCommand({ type: 'resume_task', taskId: 'task-paused' }, 'third-group', false);
     expect(db.tasks.getById('task-paused')!.status).toBe('paused');
   });
 });
@@ -260,11 +236,7 @@ describe('cancel_task authorization', () => {
       createdAt: '2024-01-01T00:00:00.000Z',
     });
 
-    await handler.processTaskCommand(
-      { type: 'cancel_task', taskId: 'task-to-cancel' },
-      'telegram_main',
-      true,
-    );
+    await handler.processTaskCommand({ type: 'cancel_task', taskId: 'task-to-cancel' }, 'telegram_main', true);
     expect(db.tasks.getById('task-to-cancel')).toBeUndefined();
   });
 
@@ -283,11 +255,7 @@ describe('cancel_task authorization', () => {
       createdAt: '2024-01-01T00:00:00.000Z',
     });
 
-    await handler.processTaskCommand(
-      { type: 'cancel_task', taskId: 'task-own' },
-      'other-group',
-      false,
-    );
+    await handler.processTaskCommand({ type: 'cancel_task', taskId: 'task-own' }, 'other-group', false);
     expect(db.tasks.getById('task-own')).toBeUndefined();
   });
 
@@ -306,11 +274,7 @@ describe('cancel_task authorization', () => {
       createdAt: '2024-01-01T00:00:00.000Z',
     });
 
-    await handler.processTaskCommand(
-      { type: 'cancel_task', taskId: 'task-foreign' },
-      'other-group',
-      false,
-    );
+    await handler.processTaskCommand({ type: 'cancel_task', taskId: 'task-foreign' }, 'other-group', false);
     expect(db.tasks.getById('task-foreign')).toBeDefined();
   });
 });
@@ -351,11 +315,7 @@ describe('register_group authorization', () => {
 
 describe('refresh_groups authorization', () => {
   it('non-main group cannot trigger refresh', async () => {
-    await handler.processTaskCommand(
-      { type: 'refresh_groups' },
-      'other-group',
-      false,
-    );
+    await handler.processTaskCommand({ type: 'refresh_groups' }, 'other-group', false);
   });
 });
 
@@ -379,9 +339,7 @@ describe('schedule_task schedule types', () => {
     expect(tasks).toHaveLength(1);
     expect(tasks[0].scheduleType).toBe('cron');
     expect(tasks[0].nextRun).toBeTruthy();
-    expect(new Date(tasks[0].nextRun!).getTime()).toBeGreaterThan(
-      Date.now() - 60000,
-    );
+    expect(new Date(tasks[0].nextRun!).getTime()).toBeGreaterThan(Date.now() - 60000);
   });
 
   it('rejects invalid cron expression', async () => {

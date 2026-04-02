@@ -4,10 +4,7 @@ import path from 'path';
 import { GROUPS_DIR } from '../../config.js';
 import { resolveGroupFolderPath } from '../../group-folder.js';
 import { logger } from '../../logger.js';
-import {
-  writeGroupsSnapshot,
-  writeTasksSnapshot,
-} from '../../container-runner.js';
+import { writeGroupsSnapshot, writeTasksSnapshot } from '../../container-runner.js';
 import type { RegisteredGroup, LocalDatabase } from '../db/index.js';
 import type { AvailableGroup } from './types.js';
 
@@ -17,20 +14,11 @@ export interface IpcDeps {
   registerGroup: (jid: string, group: RegisteredGroup) => void;
   syncGroups: (force: boolean) => Promise<void>;
   getAvailableGroups: () => AvailableGroup[];
-  writeGroupsSnapshot: (
-    groupFolder: string,
-    isMain: boolean,
-    availableGroups: AvailableGroup[],
-    registeredJids: Set<string>,
-  ) => void;
+  writeGroupsSnapshot: (groupFolder: string, isMain: boolean, availableGroups: AvailableGroup[], registeredJids: Set<string>) => void;
   onTasksChanged: () => void;
 }
 
-export const createIpcService = (
-  localDatabase: LocalDatabase,
-  sendMessage: (jid: string, text: string) => Promise<void>,
-  syncGroupsFn: (force: boolean) => Promise<void>,
-): IpcDeps => {
+export const createIpcService = (localDatabase: LocalDatabase, sendMessage: (jid: string, text: string) => Promise<void>, syncGroupsFn: (force: boolean) => Promise<void>): IpcDeps => {
   const groups: Record<string, RegisteredGroup> = localDatabase.groups.getAll();
 
   return {
@@ -45,10 +33,7 @@ export const createIpcService = (
       try {
         groupDir = resolveGroupFolderPath(group.folder);
       } catch (err) {
-        logger.warn(
-          { jid, folder: group.folder, err },
-          'Rejecting group registration with invalid folder',
-        );
+        logger.warn({ jid, folder: group.folder, err }, 'Rejecting group registration with invalid folder');
         return;
       }
 
@@ -62,17 +47,11 @@ export const createIpcService = (
         const groupLocalMd = path.join(groupDir, 'CLAUDE.local.md');
         if (fs.existsSync(globalLocalMd)) {
           fs.copyFileSync(globalLocalMd, groupLocalMd);
-          logger.info(
-            { folder: group.folder },
-            'Copied global CLAUDE.local.md to group',
-          );
+          logger.info({ folder: group.folder }, 'Copied global CLAUDE.local.md to group');
         }
       }
 
-      logger.info(
-        { jid, name: group.name, folder: group.folder },
-        'Group registered',
-      );
+      logger.info({ jid, name: group.name, folder: group.folder }, 'Group registered');
     },
 
     getAvailableGroups: () => {
@@ -89,12 +68,7 @@ export const createIpcService = (
         }));
     },
 
-    writeGroupsSnapshot: (
-      groupFolder: string,
-      isMain: boolean,
-      availableGroups: AvailableGroup[],
-      registeredJids: Set<string>,
-    ) => {
+    writeGroupsSnapshot: (groupFolder: string, isMain: boolean, availableGroups: AvailableGroup[], registeredJids: Set<string>) => {
       writeGroupsSnapshot(groupFolder, isMain, availableGroups, registeredJids);
     },
 

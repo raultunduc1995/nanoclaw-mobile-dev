@@ -7,12 +7,4 @@ export type { TasksLocalResource } from './resources/tasks.js';
 export type { RouterStateLocalResource } from './resources/router-state.js';
 export type { GroupsLocalResource } from './resources/groups.js';
 
-export type {
-  ChatInfo,
-  Message,
-  RegisteredGroup,
-  ScheduledTask,
-  TaskRunLog,
-  ContainerConfig,
-  AdditionalMount,
-} from './types.js';
+export type { ChatInfo, Message, RegisteredGroup, ScheduledTask, TaskRunLog, ContainerConfig, AdditionalMount } from './types.js';
