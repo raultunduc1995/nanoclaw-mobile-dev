@@ -112,9 +112,7 @@ describe('formatMessages', () => {
       TZ,
     );
     expect(result).toContain('reply_to="42"');
-    expect(result).toContain(
-      '<quoted_message from="Bob">Are you coming tonight?</quoted_message>',
-    );
+    expect(result).toContain('<quoted_message from="Bob">Are you coming tonight?</quoted_message>');
     expect(result).toContain('Yes, on my way!</message>');
   });
 
@@ -150,9 +148,7 @@ describe('formatMessages', () => {
       TZ,
     );
     expect(result).toContain('from="A &amp; B"');
-    expect(result).toContain(
-      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
-    );
+    expect(result).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
   });
 
   it('converts timestamps to local time for given timezone', () => {

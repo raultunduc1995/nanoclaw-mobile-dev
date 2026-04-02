@@ -29,7 +29,6 @@ vi.mock('../../group-folder.js', () => ({
   resolveGroupFolderPath: vi.fn((folder: string) => `/tmp/test-groups/${folder}`),
 }));
 
-
 // --- Grammy mock ---
 
 type Handler = (...args: any[]) => any;
@@ -174,10 +173,13 @@ describe('TelegramChannel', () => {
     vi.spyOn(fs, 'writeFileSync').mockReturnValue(undefined);
 
     // Mock global fetch for file downloads
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
+      }),
+    );
   });
 
   afterEach(() => {
@@ -622,7 +624,12 @@ describe('TelegramChannel', () => {
       await channel.connect();
 
       const ctx = createMediaCtx({
-        extra: { photo: [{ file_id: 'small_id', width: 90 }, { file_id: 'large_id', width: 800 }] },
+        extra: {
+          photo: [
+            { file_id: 'small_id', width: 90 },
+            { file_id: 'large_id', width: 800 },
+          ],
+        },
       });
       await triggerMediaMessage('message:photo', ctx);
       await flushPromises();
@@ -671,10 +678,7 @@ describe('TelegramChannel', () => {
       await triggerMediaMessage('message:photo', ctx);
       await flushPromises();
 
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Photo] Check this' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Photo] Check this' }));
     });
 
     it('downloads document and includes filename and path', async () => {
@@ -775,10 +779,7 @@ describe('TelegramChannel', () => {
       await triggerMediaMessage('message:sticker', ctx);
 
       expect(currentBot().api.getFile).not.toHaveBeenCalled();
-      expect(opts.onMessage).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.objectContaining({ content: '[Sticker 😂]' }),
-      );
+      expect(opts.onMessage).toHaveBeenCalledWith('tg:100200300', expect.objectContaining({ content: '[Sticker 😂]' }));
     });
 
     it('stores location with placeholder (no download)', async () => {

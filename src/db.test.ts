@@ -122,16 +122,10 @@ describe('reply context', () => {
       reply_to_sender_name: 'Bob',
     });
 
-    const messages = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('group@g.us', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].reply_to_message_id).toBe('42');
-    expect(messages[0].reply_to_message_content).toBe(
-      'Are you coming tonight?',
-    );
+    expect(messages[0].reply_to_message_content).toBe('Are you coming tonight?');
     expect(messages[0].reply_to_sender_name).toBe('Bob');
   });
 
@@ -147,11 +141,7 @@ describe('reply context', () => {
       timestamp: '2024-01-01T00:00:01.000Z',
     });
 
-    const messages = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const messages = getMessagesSince('group@g.us', '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].reply_to_message_id).toBeNull();
     expect(messages[0].reply_to_message_content).toBeNull();
@@ -173,11 +163,7 @@ describe('reply context', () => {
       reply_to_sender_name: 'Dave',
     });
 
-    const { messages } = getNewMessages(
-      ['group@g.us'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const { messages } = getNewMessages(['group@g.us'], '2024-01-01T00:00:00.000Z', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].reply_to_message_id).toBe('99');
     expect(messages[0].reply_to_sender_name).toBe('Dave');

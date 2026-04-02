@@ -9,13 +9,8 @@ export function escapeXml(s: string): string {
 export function formatMessages(messages: NewMessage[], timezone: string): string {
   const lines = messages.map((m) => {
     const displayTime = formatLocalTime(m.timestamp, timezone);
-    const replyAttr = m.reply_to_message_id
-      ? ` reply_to="${escapeXml(m.reply_to_message_id)}"`
-      : '';
-    const replySnippet =
-      m.reply_to_message_content && m.reply_to_sender_name
-        ? `\n  <quoted_message from="${escapeXml(m.reply_to_sender_name)}">${escapeXml(m.reply_to_message_content)}</quoted_message>`
-        : '';
+    const replyAttr = m.reply_to_message_id ? ` reply_to="${escapeXml(m.reply_to_message_id)}"` : '';
+    const replySnippet = m.reply_to_message_content && m.reply_to_sender_name ? `\n  <quoted_message from="${escapeXml(m.reply_to_sender_name)}">${escapeXml(m.reply_to_message_content)}</quoted_message>` : '';
     return `<message sender="${escapeXml(m.sender_name)}" time="${escapeXml(displayTime)}"${replyAttr}>${replySnippet}${escapeXml(m.content)}</message>`;
   });
 

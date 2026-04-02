@@ -48,11 +48,7 @@ export class TelegramChannel implements Channel {
    * Returns the container-relative path (e.g. /workspace/group/attachments/photo_123.jpg)
    * or null if the download fails.
    */
-  private async downloadFile(
-    fileId: string,
-    groupFolder: string,
-    filename: string,
-  ): Promise<string | null> {
+  private async downloadFile(fileId: string, groupFolder: string, filename: string): Promise<string | null> {
     if (!this.bot) return null;
 
     try {
@@ -132,12 +128,7 @@ export class TelegramChannel implements Channel {
       const replyTo = ctx.message.reply_to_message;
       const replyToMessageId = replyTo?.message_id?.toString();
       const replyToContent = replyTo?.text || replyTo?.caption;
-      const replyToSenderName = replyTo
-        ? replyTo.from?.first_name ||
-          replyTo.from?.username ||
-          replyTo.from?.id?.toString() ||
-          'Unknown'
-        : undefined;
+      const replyToSenderName = replyTo ? replyTo.from?.first_name || replyTo.from?.username || replyTo.from?.id?.toString() || 'Unknown' : undefined;
 
       // Determine chat name
       const chatName = ctx.chat.type === 'private' ? senderName : 'title' in ctx.chat ? ctx.chat.title || chatJid : chatJid;
@@ -189,11 +180,7 @@ export class TelegramChannel implements Channel {
     });
 
     // Handle non-text messages: download files when possible, fall back to placeholders.
-    const storeMedia = (
-      ctx: Context,
-      placeholder: string,
-      opts?: { fileId?: string; filename?: string },
-    ) => {
+    const storeMedia = (ctx: Context, placeholder: string, opts?: { fileId?: string; filename?: string }) => {
       if (!ctx.chat || !ctx.message || !ctx.from) return;
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
