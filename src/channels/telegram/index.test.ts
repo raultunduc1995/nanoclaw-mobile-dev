@@ -96,7 +96,19 @@ function createTestOpts(overrides?: Partial<TelegramChannelOpts>): TelegramChann
   };
 }
 
-function createTextCtx(overrides: { chatId?: number; chatType?: string; chatTitle?: string; text: string; fromId?: number; firstName?: string; username?: string; messageId?: number; date?: number; entities?: any[]; reply_to_message?: any }) {
+function createTextCtx(overrides: {
+  chatId?: number;
+  chatType?: string;
+  chatTitle?: string;
+  text: string;
+  fromId?: number;
+  firstName?: string;
+  username?: string;
+  messageId?: number;
+  date?: number;
+  entities?: any[];
+  reply_to_message?: any;
+}) {
   const chatId = overrides.chatId ?? 100200300;
   const chatType = overrides.chatType ?? 'group';
   return {

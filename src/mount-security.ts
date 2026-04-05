@@ -21,7 +21,25 @@ let allowlistLoadError: string | null = null;
 /**
  * Default blocked patterns - paths that should never be mounted
  */
-const DEFAULT_BLOCKED_PATTERNS = ['.ssh', '.gnupg', '.gpg', '.aws', '.azure', '.gcloud', '.kube', '.docker', 'credentials', '.env', '.netrc', '.npmrc', '.pypirc', 'id_rsa', 'id_ed25519', 'private_key', '.secret'];
+const DEFAULT_BLOCKED_PATTERNS = [
+  '.ssh',
+  '.gnupg',
+  '.gpg',
+  '.aws',
+  '.azure',
+  '.gcloud',
+  '.kube',
+  '.docker',
+  'credentials',
+  '.env',
+  '.netrc',
+  '.npmrc',
+  '.pypirc',
+  'id_rsa',
+  'id_ed25519',
+  'private_key',
+  '.secret',
+];
 
 /**
  * Load the mount allowlist from the external config location.

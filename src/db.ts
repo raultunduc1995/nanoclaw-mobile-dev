@@ -242,7 +242,9 @@ export function setLastGroupSync(): void {
  * Only call this for registered groups where message history is needed.
  */
 export function storeMessage(msg: NewMessage): void {
-  db.prepare(`INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, reply_to_message_id, reply_to_message_content, reply_to_sender_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+  db.prepare(
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, reply_to_message_id, reply_to_message_content, reply_to_sender_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
     msg.id,
     msg.chat_jid,
     msg.sender,
@@ -260,8 +262,26 @@ export function storeMessage(msg: NewMessage): void {
 /**
  * Store a message directly.
  */
-export function storeMessageDirect(msg: { id: string; chat_jid: string; sender: string; sender_name: string; content: string; timestamp: string; is_from_me: boolean; is_bot_message?: boolean }): void {
-  db.prepare(`INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(msg.id, msg.chat_jid, msg.sender, msg.sender_name, msg.content, msg.timestamp, msg.is_from_me ? 1 : 0, msg.is_bot_message ? 1 : 0);
+export function storeMessageDirect(msg: {
+  id: string;
+  chat_jid: string;
+  sender: string;
+  sender_name: string;
+  content: string;
+  timestamp: string;
+  is_from_me: boolean;
+  is_bot_message?: boolean;
+}): void {
+  db.prepare(`INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    msg.id,
+    msg.chat_jid,
+    msg.sender,
+    msg.sender_name,
+    msg.content,
+    msg.timestamp,
+    msg.is_from_me ? 1 : 0,
+    msg.is_bot_message ? 1 : 0,
+  );
 }
 
 export function getNewMessages(jids: string[], lastTimestamp: string, botPrefix: string, limit: number = 200): { messages: NewMessage[]; newTimestamp: string } {
@@ -329,7 +349,19 @@ export function createTask(task: Omit<ScheduledTask, 'last_run' | 'last_result'>
     INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, script, schedule_type, schedule_value, context_mode, next_run, status, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
-  ).run(task.id, task.group_folder, task.chat_jid, task.prompt, task.script || null, task.schedule_type, task.schedule_value, task.context_mode || 'isolated', task.next_run, task.status, task.created_at);
+  ).run(
+    task.id,
+    task.group_folder,
+    task.chat_jid,
+    task.prompt,
+    task.script || null,
+    task.schedule_type,
+    task.schedule_value,
+    task.context_mode || 'isolated',
+    task.next_run,
+    task.status,
+    task.created_at,
+  );
 }
 
 export function getTaskById(id: string): ScheduledTask | undefined {

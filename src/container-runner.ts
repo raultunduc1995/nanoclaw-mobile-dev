@@ -68,6 +68,15 @@ function buildVolumeMounts(group: RegisteredGroup, isMain: boolean): VolumeMount
       });
     }
 
+    // Main gets writable access to the store (SQLite DB) so it can
+    // query and write to the database directly.
+    const storeDir = path.join(projectRoot, 'store');
+    mounts.push({
+      hostPath: storeDir,
+      containerPath: '/workspace/project/store',
+      readonly: false,
+    });
+
     // Main also gets its group folder as the working directory
     mounts.push({
       hostPath: groupDir,
@@ -241,7 +250,12 @@ function buildContainerArgs(mounts: VolumeMount[], containerName: string): strin
   return args;
 }
 
-export async function runContainerAgent(group: RegisteredGroup, input: ContainerInput, onProcess: (proc: ChildProcess, containerName: string) => void, onOutput?: (output: ContainerOutput) => Promise<void>): Promise<ContainerOutput> {
+export async function runContainerAgent(
+  group: RegisteredGroup,
+  input: ContainerInput,
+  onProcess: (proc: ChildProcess, containerName: string) => void,
+  onOutput?: (output: ContainerOutput) => Promise<void>,
+): Promise<ContainerOutput> {
   const startTime = Date.now();
 
   const groupDir = resolveGroupFolderPath(group.folder);
@@ -387,7 +401,18 @@ export async function runContainerAgent(group: RegisteredGroup, input: Container
       if (timedOut) {
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
         const timeoutLog = path.join(logsDir, `container-${ts}.log`);
-        fs.writeFileSync(timeoutLog, [`=== Container Run Log (TIMEOUT) ===`, `Timestamp: ${new Date().toISOString()}`, `Group: ${group.name}`, `Container: ${containerName}`, `Duration: ${duration}ms`, `Exit Code: ${code}`, `Had Streaming Output: ${hadStreamingOutput}`].join('\n'));
+        fs.writeFileSync(
+          timeoutLog,
+          [
+            `=== Container Run Log (TIMEOUT) ===`,
+            `Timestamp: ${new Date().toISOString()}`,
+            `Group: ${group.name}`,
+            `Container: ${containerName}`,
+            `Duration: ${duration}ms`,
+            `Exit Code: ${code}`,
+            `Had Streaming Output: ${hadStreamingOutput}`,
+          ].join('\n'),
+        );
 
         // Timeout after output = idle cleanup, not failure.
         // The agent already sent its response; this is just the
@@ -417,7 +442,17 @@ export async function runContainerAgent(group: RegisteredGroup, input: Container
       const logFile = path.join(logsDir, `container-${timestamp}.log`);
       const isVerbose = process.env.LOG_LEVEL === 'debug' || process.env.LOG_LEVEL === 'trace';
 
-      const logLines = [`=== Container Run Log ===`, `Timestamp: ${new Date().toISOString()}`, `Group: ${group.name}`, `IsMain: ${input.isMain}`, `Duration: ${duration}ms`, `Exit Code: ${code}`, `Stdout Truncated: ${stdoutTruncated}`, `Stderr Truncated: ${stderrTruncated}`, ``];
+      const logLines = [
+        `=== Container Run Log ===`,
+        `Timestamp: ${new Date().toISOString()}`,
+        `Group: ${group.name}`,
+        `IsMain: ${input.isMain}`,
+        `Duration: ${duration}ms`,
+        `Exit Code: ${code}`,
+        `Stdout Truncated: ${stdoutTruncated}`,
+        `Stderr Truncated: ${stderrTruncated}`,
+        ``,
+      ];
 
       const isError = code !== 0;
 
@@ -578,6 +613,7 @@ export interface AvailableGroup {
  * Write available groups snapshot for the container to read.
  * Only main group can see all available groups (for activation).
  * Non-main groups only see their own registration status.
+ * This function is always called by the main group when groups change, so the main group has the full list of available groups to write.
  */
 export function writeGroupsSnapshot(groupFolder: string, isMain: boolean, groups: AvailableGroup[], _registeredJids: Set<string>): void {
   const groupIpcDir = resolveGroupIpcPath(groupFolder);

@@ -1,6 +1,20 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { _initTestDatabase, createTask, deleteTask, getAllChats, getAllRegisteredGroups, getLastBotMessageTimestamp, getMessagesSince, getNewMessages, getTaskById, setRegisteredGroup, storeChatMetadata, storeMessage, updateTask } from './db.js';
+import {
+  _initTestDatabase,
+  createTask,
+  deleteTask,
+  getAllChats,
+  getAllRegisteredGroups,
+  getLastBotMessageTimestamp,
+  getMessagesSince,
+  getNewMessages,
+  getTaskById,
+  setRegisteredGroup,
+  storeChatMetadata,
+  storeMessage,
+  updateTask,
+} from './db.js';
 import { formatMessages } from './router.js';
 
 beforeEach(() => {

@@ -6,7 +6,20 @@ import './channels/index.js';
 import { getChannelFactory, getRegisteredChannelNames } from './channels/registry.js';
 import { ContainerOutput, runContainerAgent, writeGroupsSnapshot, writeTasksSnapshot } from './container-runner.js';
 import { cleanupOrphans, ensureContainerRuntimeRunning } from './container-runtime.js';
-import { getAllChats, getAllRegisteredGroups, getAllTasks, getLastBotMessageTimestamp, getMessagesSince, getNewMessages, getRouterState, initDatabase, setRegisteredGroup, setRouterState, storeChatMetadata, storeMessage } from './db.js';
+import {
+  getAllChats,
+  getAllRegisteredGroups,
+  getAllTasks,
+  getLastBotMessageTimestamp,
+  getMessagesSince,
+  getNewMessages,
+  getRouterState,
+  initDatabase,
+  setRegisteredGroup,
+  setRouterState,
+  storeChatMetadata,
+  storeMessage,
+} from './db.js';
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { startIpcWatcher } from './ipc.js';
