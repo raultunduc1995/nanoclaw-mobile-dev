@@ -532,7 +532,10 @@ async function main(): Promise<void> {
 
   // Credentials are passed directly as env vars (CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY)
   // by the host's container runner.
-  const sdkEnv: Record<string, string | undefined> = { ...process.env };
+  const sdkEnv: Record<string, string | undefined> = {
+    ...process.env,
+    CLAUDE_CODE_AUTO_COMPACT_WINDOW: '165000',
+  };
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const mcpServerPath = path.join(__dirname, 'ipc-mcp-stdio.js');
