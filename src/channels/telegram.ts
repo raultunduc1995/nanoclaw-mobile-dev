@@ -4,12 +4,12 @@ import path from 'path';
 
 import { Api, Bot, BotError, Context } from 'grammy';
 
-import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../../config.js';
-import { readEnvFile } from '../../env.js';
-import { resolveGroupFolderPath } from '../../group-folder.js';
-import { logger } from '../../logger.js';
-import { Channel } from '../../types.js';
-import { ChannelOpts, registerChannel } from '../registry.js';
+import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
+import { readEnvFile } from '../env.js';
+import { resolveGroupFolderPath } from '../group-folder.js';
+import { logger } from '../logger.js';
+import { Channel } from '../types.js';
+import { ChannelOpts, registerChannel } from './registry.js';
 
 export type TelegramChannelOpts = ChannelOpts;
 

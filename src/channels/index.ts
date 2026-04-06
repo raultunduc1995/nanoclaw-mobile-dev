@@ -12,5 +12,5 @@ import { ENABLE_TELEGRAM } from '../config.js';
 
 // telegram
 if (ENABLE_TELEGRAM) {
-  await import('./telegram/index.js');
+  await import('./telegram.js');
 }
