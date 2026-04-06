@@ -150,7 +150,9 @@ If squashing was chosen, squash after all cherry-picks succeed (see Step 2 for f
 If conflicts during cherry-pick:
 - Show conflicted files.
 - Open only conflicted files, resolve conflict markers.
-- Preserve intentional local customizations.
+- **Always take upstream's logic/value changes** — if upstream changed a value, added a line, or modified behavior, that change must come through even if it conflicts with our code.
+- **Keep our formatting** (printWidth 300, single-line statements, etc.) — reformat the upstream change to match our style, but never drop the change itself.
+- Preserve intentional local customizations (e.g., removed features, architectural decisions like additionalDirectories vs systemPrompt). When in doubt about whether a conflict is formatting-only vs logic change, assume logic change and take upstream's version.
 - Do not refactor surrounding code.
 - `git add <file>` then `git cherry-pick --continue`
 
