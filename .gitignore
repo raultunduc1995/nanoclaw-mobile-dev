@@ -9,16 +9,8 @@ store/
 data/
 logs/
 
-# Groups - only track base structure and specific CLAUDE.md files
-groups/*
-!groups/main/
-!groups/global/
-groups/main/*
-groups/global/*
-!groups/global/CLAUDE.md
-!groups/main/CLAUDE.md
-!groups/global/CLAUDE.local.md
-!groups/main/CLAUDE.local.md
+# Groups - all local, never tracked
+groups/
 
 # Local overrides
 CLAUDE.md
