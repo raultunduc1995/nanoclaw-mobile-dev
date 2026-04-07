@@ -28,8 +28,7 @@ vi.mock('fs', async () => {
 
 let groups: Map<string, RegisteredGroup>;
 let tasks: Map<string, ScheduledTask>;
-let sentMessages: { send: ReturnType<typeof vi.fn> };
-let channelsSync: { sync: ReturnType<typeof vi.fn> };
+let sentMessages: { send: IpcHandlerDeps['channelRegistryDeps']['sendMessageTo'] };
 let handlerDeps: IpcHandlerDeps;
 
 let handler: IpcHandler;
@@ -42,8 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   groups = new Map();
   tasks = new Map();
-  sentMessages = { send: vi.fn().mockResolvedValue(undefined) };
-  channelsSync = { sync: vi.fn().mockResolvedValue(undefined) };
+  sentMessages = { send: vi.fn<IpcHandlerDeps['channelRegistryDeps']['sendMessageTo']>().mockResolvedValue(undefined) };
   handlerDeps = {
     groupsDeps: {
       getById: (jid) => groups.get(jid),
@@ -63,7 +61,6 @@ beforeEach(() => {
     },
     channelRegistryDeps: {
       sendMessageTo: sentMessages.send,
-      forceChannelsSync: channelsSync.sync,
     },
     containerRunnerDeps: {
       writeAvailableGroupsIn: vi.fn(),
@@ -234,12 +231,12 @@ describe('register_group authorization', () => {
 describe('refresh_groups authorization', () => {
   it('non-main group cannot trigger refresh', async () => {
     await handler.processTaskCommand({ type: 'refresh_groups' }, OTHER);
-    expect(channelsSync.sync).not.toHaveBeenCalled();
+    expect(handlerDeps.containerRunnerDeps.writeAvailableGroupsIn).not.toHaveBeenCalled();
   });
 
   it('main group can trigger refresh', async () => {
     await handler.processTaskCommand({ type: 'refresh_groups' }, MAIN);
-    expect(channelsSync.sync).toHaveBeenCalled();
+    expect(handlerDeps.containerRunnerDeps.writeAvailableGroupsIn).toHaveBeenCalled();
   });
 });
 

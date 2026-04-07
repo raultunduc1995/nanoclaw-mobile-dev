@@ -24,7 +24,6 @@ export interface IpcHandlerDeps {
   };
   channelRegistryDeps: {
     sendMessageTo: (jid: string, message: string) => Promise<void>; // sendMessageToChatChannel
-    forceChannelsSync: () => Promise<void>; // syncGroupsOnAllSyncableChannels({ force: true })
   };
   containerRunnerDeps: {
     writeAvailableGroupsIn: ({ groupFolder, groups, isMain }: { groupFolder: string; groups: AvailableGroup[]; isMain: boolean }) => void; // writeGroupsSnapshot({ groupFolder, groups, isMain })
@@ -33,13 +32,14 @@ export interface IpcHandlerDeps {
 
 export interface IpcHandler {
   start: () => void;
+  // Exposed for testing only — in production, start() polls directories and calls these internally
   processTaskCommand: (taskData: IpcTaskData, { groupFolder, isMain }: { groupFolder: string; isMain: boolean }) => Promise<void>;
   processMessage: (data: IpcMessageData, { groupFolder, isMain }: { groupFolder: string; isMain: boolean }) => Promise<void>;
 }
 
 export const createIpcHandler = ({ groupsDeps, tasksDeps, chatsDeps, channelRegistryDeps, containerRunnerDeps }: IpcHandlerDeps): IpcHandler => {
   const messagesIpcHandler = createMessagesIpcHandler(groupsDeps, channelRegistryDeps);
-  const tasksIpcHandler = createTasksIpcHandler(groupsDeps, tasksDeps, chatsDeps, channelRegistryDeps, containerRunnerDeps);
+  const tasksIpcHandler = createTasksIpcHandler(groupsDeps, tasksDeps, chatsDeps, containerRunnerDeps);
   let running = false;
 
   const processIpcFiles = async () => {
@@ -145,9 +145,6 @@ const createTasksIpcHandler = (
   chatsDeps: {
     getAvailableChatGroups: () => AvailableGroup[];
   },
-  channelRegistryDeps: {
-    forceChannelsSync: () => Promise<void>;
-  },
   containerRunnerDeps: {
     writeAvailableGroupsIn: ({ groupFolder, groups, isMain }: { groupFolder: string; groups: AvailableGroup[]; isMain: boolean }) => void;
   },
@@ -227,12 +224,19 @@ const createTasksIpcHandler = (
   };
 
   const handleRefreshGroups = async (groupFolder: string, isMain: boolean) => {
+    if (!isMain) {
+      logger.warn({ groupFolder }, 'Unauthorized refresh_groups attempt blocked');
+      return;
+    }
     logger.info({ groupFolder }, 'Group metadata refresh requested via IPC');
-    await channelRegistryDeps.forceChannelsSync();
     containerRunnerDeps.writeAvailableGroupsIn({ groupFolder, groups: chatsDeps.getAvailableChatGroups(), isMain });
   };
 
-  const handleRegisterGroup = (taskData: Extract<IpcTaskData, { type: 'register_group' }>) => {
+  const handleRegisterGroup = (taskData: Extract<IpcTaskData, { type: 'register_group' }>, isMain: boolean) => {
+    if (!isMain) {
+      logger.warn({ taskData }, 'Unauthorized register_group attempt blocked');
+      return;
+    }
     groupsDeps.register(taskData.jid, fromIpcRegisterGroupToRegisteredGroup(taskData));
   };
 
@@ -256,18 +260,10 @@ const createTasksIpcHandler = (
         handleUpdateTask(taskData, { groupFolder, isMain });
         break;
       case 'refresh_groups':
-        if (isMain) {
-          await handleRefreshGroups(groupFolder, true);
-        } else {
-          logger.warn({ groupFolder }, 'Unauthorized refresh_groups attempt blocked');
-        }
+        await handleRefreshGroups(groupFolder, isMain);
         break;
       case 'register_group':
-        if (isMain) {
-          handleRegisterGroup(taskData);
-        } else {
-          logger.warn({ groupFolder }, 'Unauthorized register_group attempt blocked');
-        }
+        handleRegisterGroup(taskData, isMain);
         break;
     }
   };

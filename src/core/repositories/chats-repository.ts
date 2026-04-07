@@ -1,5 +1,4 @@
 import type { ChatsLocalResource, ChatRow } from '../db/index.js';
-import type { GroupsRepository } from './groups-repository.js';
 
 // --- Types and interfaces ---
 
@@ -24,10 +23,10 @@ export interface ChatsRepository {
   storeMetadata: (chatJid: string, metadata: { timestamp: string; name?: string; channel?: string; isGroup?: boolean }) => void;
   update: (chatInfo: ChatInfo) => void;
   getAll: () => ChatInfo[];
-  getAvailableGroups: () => AvailableGroup[];
+  getAvailableGroupChats: () => ChatInfo[];
 }
 
-export const createChatsRepository = (resource: ChatsLocalResource, groupsRepository: GroupsRepository): ChatsRepository => {
+export const createChatsRepository = (resource: ChatsLocalResource): ChatsRepository => {
   return {
     storeMetadata: (chatJid, metadata) => {
       if (metadata.name) {
@@ -45,19 +44,11 @@ export const createChatsRepository = (resource: ChatsLocalResource, groupsReposi
       return resource.getAll().map(toChatInfo);
     },
 
-    getAvailableGroups: () => {
-      const chats = resource.getAll();
-      const registeredJids = groupsRepository.getRegisteredGroupsJids();
-
-      return chats
-        .filter((c) => c.is_group === 1)
-        .map((c) => ({
-          jid: c.jid,
-          name: c.name,
-          lastActivity: c.last_message_time,
-          isRegistered: registeredJids.has(c.jid),
-        }));
-    },
+    getAvailableGroupChats: () =>
+      resource
+        .getAll()
+        .filter((chat) => chat.is_group === 1)
+        .map(toChatInfo),
   };
 };
 

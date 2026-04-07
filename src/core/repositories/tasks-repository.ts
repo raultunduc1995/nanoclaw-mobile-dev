@@ -1,9 +1,7 @@
 import { CronExpressionParser } from 'cron-parser';
 
-import { writeTasksSnapshot } from '../../container-runner.js';
 import { logger } from '../../logger.js';
 import type { TasksLocalResource, TaskRow, TaskRunLogRow } from '../db/index.js';
-import type { GroupsRepository, RegisteredGroup } from './groups-repository.js';
 import { TIMEZONE } from '../../config.js';
 
 // --- Types and interfaces ---
@@ -48,93 +46,51 @@ export interface TasksRepository {
   deleteTask: (id: string) => void;
   getAllDueScheduledTasks: () => ScheduledTask[];
   updateAfterRun: (id: string, lastResult: string, nextRun?: string) => void;
-  writeTasksSnapshotFor: (group: RegisteredGroup) => void;
   saveTaskRunLog: (log: TaskRunLog) => void;
 }
 
-export const createTasksRepository = (resource: TasksLocalResource, groupsRepository: GroupsRepository): TasksRepository => {
-  const onTasksChanged = () => {
-    const tasks = resource.getAll();
-    const taskRows = tasks.map((t) => ({
-      id: t.id,
-      groupFolder: t.group_folder,
-      prompt: t.prompt,
-      script: t.script ?? undefined,
-      schedule_type: t.schedule_type,
-      schedule_value: t.schedule_value,
-      status: t.status,
-      next_run: t.next_run,
-    }));
-    const registeredGroups = groupsRepository.getRegisteredGroupsRecord();
-    for (const group of Object.values(registeredGroups)) {
-      writeTasksSnapshot(group.folder, group.isMain === true, taskRows);
-    }
-  };
+export const createTasksRepository = (resource: TasksLocalResource): TasksRepository => ({
+  saveTask: (task) => {
+    resource.create({
+      id: task.id,
+      group_folder: task.groupFolder,
+      chat_jid: task.chatJid,
+      prompt: task.prompt,
+      script: task.script ?? null,
+      schedule_type: task.scheduleType,
+      schedule_value: task.scheduleValue,
+      context_mode: task.contextMode || 'isolated',
+      next_run: task.nextRun ?? null,
+      last_run: null,
+      last_result: null,
+      status: 'active',
+      created_at: new Date().toISOString(),
+    });
+  },
 
-  return {
-    saveTask: (task) => {
-      resource.create({
-        id: task.id,
-        group_folder: task.groupFolder,
-        chat_jid: task.chatJid,
-        prompt: task.prompt,
-        script: task.script ?? null,
-        schedule_type: task.scheduleType,
-        schedule_value: task.scheduleValue,
-        context_mode: task.contextMode || 'isolated',
-        next_run: task.nextRun ?? null,
-        last_run: null,
-        last_result: null,
-        status: 'active',
-        created_at: new Date().toISOString(),
-      });
-      onTasksChanged();
-    },
+  getTaskById: (id) => {
+    const row = resource.getById(id);
+    return row ? toScheduledTask(row) : undefined;
+  },
 
-    getTaskById: (id) => {
-      const row = resource.getById(id);
-      return row ? toScheduledTask(row) : undefined;
-    },
+  getAllTasksForGroup: (groupFolder) => resource.getForGroup(groupFolder).map(toScheduledTask),
 
-    getAllTasksForGroup: (groupFolder) => resource.getForGroup(groupFolder).map(toScheduledTask),
+  getAllTasks: () => resource.getAll().map(toScheduledTask),
 
-    getAllTasks: () => resource.getAll().map(toScheduledTask),
+  updateTask: (task) => {
+    resource.update(task.id, toTaskRow(task));
+  },
 
-    updateTask: (task) => {
-      resource.update(task.id, toTaskRow(task));
-      onTasksChanged();
-    },
+  deleteTask: (id) => {
+    resource.delete(id);
+  },
 
-    deleteTask: (id) => {
-      resource.delete(id);
-      onTasksChanged();
-    },
+  getAllDueScheduledTasks: () => resource.getDue().map(toScheduledTask),
 
-    getAllDueScheduledTasks: () => resource.getDue().map(toScheduledTask),
+  updateAfterRun: (id, lastResult, nextRun = undefined) => resource.updateAfterRun(id, nextRun ?? null, lastResult),
 
-    updateAfterRun: (id, lastResult, nextRun = undefined) => resource.updateAfterRun(id, nextRun ?? null, lastResult),
-
-    writeTasksSnapshotFor: (group) => {
-      const tasks = resource.getAll();
-      writeTasksSnapshot(
-        group.folder,
-        group.isMain,
-        tasks.map((t) => ({
-          id: t.id,
-          groupFolder: t.group_folder,
-          prompt: t.prompt,
-          script: t.script ?? undefined,
-          schedule_type: t.schedule_type,
-          schedule_value: t.schedule_value,
-          status: t.status,
-          next_run: t.next_run,
-        })),
-      );
-    },
-
-    saveTaskRunLog: (log) => resource.logRun(toTaskRunLogRow(log)),
-  };
-};
+  saveTaskRunLog: (log) => resource.logRun(toTaskRunLogRow(log)),
+});
 
 // --- Mapping functions ---
 

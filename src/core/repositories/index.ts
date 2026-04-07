@@ -5,7 +5,7 @@ export type { RouterStateRepository } from './router-state-repository.js';
 export type { TasksRepository, NewScheduledTask, ScheduledTask, TaskRunLog } from './tasks-repository.js';
 
 export { createChatsRepository } from './chats-repository.js';
-export { createGroupsRepository } from './groups-repository.js';
+export { createGroupsRepository, resolveGroupIpcPath, resolveGroupFolderPath } from './groups-repository.js';
 export { createMessagesRepository } from './messages-repository.js';
 export { createRouterStateRepository } from './router-state-repository.js';
 export { createTasksRepository, computeNextRun } from './tasks-repository.js';

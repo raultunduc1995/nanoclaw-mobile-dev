@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { initTestDatabase } from '../db/connection.js';
 import type { LocalResource } from '../db/connection.js';
-import { createGroupsRepository, GroupsRepository } from './groups-repository.js';
 import { createTasksRepository, TasksRepository, NewScheduledTask } from './tasks-repository.js';
 
 vi.mock('../../logger.js', () => ({
@@ -14,24 +13,13 @@ vi.mock('../../config.js', () => ({
   GROUPS_DIR: '/tmp/test-groups',
 }));
 
-vi.mock('../../container-runner.js', () => ({
-  writeTasksSnapshot: vi.fn(),
-}));
-
-vi.mock('fs', async () => {
-  const actual = await vi.importActual<typeof import('fs')>('fs');
-  return { ...actual, default: { ...actual, mkdirSync: vi.fn(), existsSync: vi.fn(() => false), copyFileSync: vi.fn() } };
-});
-
 let db: LocalResource;
-let groupsRepo: GroupsRepository;
 let repo: TasksRepository;
 
 beforeEach(() => {
   vi.clearAllMocks();
   db = initTestDatabase();
-  groupsRepo = createGroupsRepository(db.groups);
-  repo = createTasksRepository(db.tasks, groupsRepo);
+  repo = createTasksRepository(db.tasks);
 });
 
 const task = (overrides?: Partial<NewScheduledTask>): NewScheduledTask => ({
@@ -221,47 +209,5 @@ describe('saveTaskRunLog', () => {
   it('saves error log', () => {
     repo.saveTask(task());
     expect(() => repo.saveTaskRunLog({ taskId: 'task-1', runAt: '2024-01-01T00:00:00.000Z', durationMs: 100, status: 'error', error: 'timeout' })).not.toThrow();
-  });
-});
-
-// --- Task snapshots (triggered internally by mutations) ---
-
-describe('task snapshots', () => {
-  it('writes snapshots for all registered groups after saveTask', async () => {
-    const { writeTasksSnapshot } = await import('../../container-runner.js');
-
-    groupsRepo.registerGroup('tg:main', { name: 'Main', folder: 'telegram_main', addedAt: '2024-01-01T00:00:00.000Z', isMain: true });
-    groupsRepo.registerGroup('tg:dev', { name: 'Dev', folder: 'telegram_dev', addedAt: '2024-01-01T00:00:00.000Z', isMain: false });
-
-    repo.saveTask(task({ id: 't1', groupFolder: 'telegram_main' }));
-
-    expect(writeTasksSnapshot).toHaveBeenCalledTimes(2);
-    expect(writeTasksSnapshot).toHaveBeenCalledWith('telegram_main', true, expect.any(Array));
-    expect(writeTasksSnapshot).toHaveBeenCalledWith('telegram_dev', false, expect.any(Array));
-  });
-
-  it('writes snapshots after updateTask', async () => {
-    const { writeTasksSnapshot } = await import('../../container-runner.js');
-
-    groupsRepo.registerGroup('tg:main', { name: 'Main', folder: 'telegram_main', addedAt: '2024-01-01T00:00:00.000Z', isMain: true });
-    repo.saveTask(task());
-    (writeTasksSnapshot as any).mockClear();
-
-    const existing = repo.getTaskById('task-1')!;
-    repo.updateTask({ ...existing, status: 'paused' });
-
-    expect(writeTasksSnapshot).toHaveBeenCalled();
-  });
-
-  it('writes snapshots after deleteTask', async () => {
-    const { writeTasksSnapshot } = await import('../../container-runner.js');
-
-    groupsRepo.registerGroup('tg:main', { name: 'Main', folder: 'telegram_main', addedAt: '2024-01-01T00:00:00.000Z', isMain: true });
-    repo.saveTask(task());
-    (writeTasksSnapshot as any).mockClear();
-
-    repo.deleteTask('task-1');
-
-    expect(writeTasksSnapshot).toHaveBeenCalled();
   });
 });

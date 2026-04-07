@@ -59,7 +59,7 @@ export const createGroupsRepository = (resource: GroupsLocalResource): GroupsRep
 
       createGroupDirectory(groupDir);
       if (!group.isMain) {
-        copyGlobalLocalMdToGroup(groupDir);
+        copyGlobalMdToGroup(groupDir);
       }
 
       logger.info({ jid, name: group.name, folder: group.folder }, 'Group registered');
@@ -118,7 +118,7 @@ function ensureWithinBase(baseDir: string, groupPath: string): void {
   }
 }
 
-function resolveGroupFolderPath(folder: string): string {
+export function resolveGroupFolderPath(folder: string): string {
   assertValidGroupFolder(folder);
 
   const groupPath = path.resolve(GROUPS_DIR, folder);
@@ -127,7 +127,7 @@ function resolveGroupFolderPath(folder: string): string {
   return groupPath;
 }
 
-function resolveGroupIpcPath(folder: string): string {
+export function resolveGroupIpcPath(folder: string): string {
   assertValidGroupFolder(folder);
 
   const ipcBaseDir = path.resolve(DATA_DIR, 'ipc');
@@ -143,14 +143,14 @@ function createGroupDirectory(groupDir: string): void {
   fs.mkdirSync(path.join(groupDir, 'logs'), { recursive: true });
 }
 
-function copyGlobalLocalMdToGroup(groupDir: string): void {
-  const globalLocalMd = path.join(GROUPS_DIR, 'global', 'CLAUDE.local.md');
+function copyGlobalMdToGroup(groupDir: string): void {
+  const globalLocalMd = path.join(GROUPS_DIR, 'global', 'CLAUDE.md');
   if (!fs.existsSync(globalLocalMd)) {
-    logger.warn({ folder: groupDir }, 'Global CLAUDE.local.md not found, skipping copy to group');
+    logger.warn({ folder: groupDir }, 'Global CLAUDE.md not found, skipping copy to group');
     return;
   }
 
-  const groupLocalMd = path.join(groupDir, 'CLAUDE.local.md');
+  const groupLocalMd = path.join(groupDir, 'CLAUDE.md');
   fs.copyFileSync(globalLocalMd, groupLocalMd);
-  logger.info({ folder: groupDir }, 'Copied global CLAUDE.local.md to group');
+  logger.info({ folder: groupDir }, 'Copied global CLAUDE.md to group');
 }

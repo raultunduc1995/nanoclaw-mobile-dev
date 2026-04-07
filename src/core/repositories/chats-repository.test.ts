@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { initTestDatabase } from '../db/connection.js';
 import type { LocalResource } from '../db/connection.js';
 import { createChatsRepository, ChatsRepository } from './chats-repository.js';
-import { createGroupsRepository, GroupsRepository } from './groups-repository.js';
 
 vi.mock('../../logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -28,14 +27,12 @@ vi.mock('fs', async () => {
 });
 
 let db: LocalResource;
-let groupsRepo: GroupsRepository;
 let repo: ChatsRepository;
 
 beforeEach(() => {
   vi.clearAllMocks();
   db = initTestDatabase();
-  groupsRepo = createGroupsRepository(db.groups);
-  repo = createChatsRepository(db.chats, groupsRepo);
+  repo = createChatsRepository(db.chats);
 });
 
 // --- storeMetadata ---
@@ -125,42 +122,27 @@ describe('getAll', () => {
   });
 });
 
-// --- getAvailableGroups ---
+// --- getAvailableGroupChats ---
 
-describe('getAvailableGroups', () => {
+describe('getAvailableGroupChats', () => {
   it('returns empty when no chats', () => {
-    expect(repo.getAvailableGroups()).toEqual([]);
+    expect(repo.getAvailableGroupChats()).toEqual([]);
   });
 
-  it('returns only group chats, excludes __group_sync__', () => {
+  it('returns only group chats', () => {
     repo.storeMetadata('tg:group1', { timestamp: '2024-01-01T00:00:00.000Z', name: 'Group', isGroup: true });
     repo.storeMetadata('tg:dm1', { timestamp: '2024-01-01T00:00:00.000Z', name: 'DM', isGroup: false });
-    repo.storeMetadata('__group_sync__', { timestamp: '2024-01-01T00:00:00.000Z' });
 
-    const available = repo.getAvailableGroups();
+    const available = repo.getAvailableGroupChats();
     expect(available).toHaveLength(1);
     expect(available[0].jid).toBe('tg:group1');
     expect(available[0].name).toBe('Group');
   });
 
-  it('marks registered groups as isRegistered', () => {
-    repo.storeMetadata('tg:registered', { timestamp: '2024-01-01T00:00:00.000Z', name: 'Registered', isGroup: true });
-    repo.storeMetadata('tg:unregistered', { timestamp: '2024-01-01T00:00:00.000Z', name: 'Unregistered', isGroup: true });
-
-    groupsRepo.registerGroup('tg:registered', { name: 'Registered', folder: 'telegram_registered', addedAt: '2024-01-01T00:00:00.000Z', isMain: false });
-
-    const available = repo.getAvailableGroups();
-    const registered = available.find((g) => g.jid === 'tg:registered');
-    const unregistered = available.find((g) => g.jid === 'tg:unregistered');
-
-    expect(registered!.isRegistered).toBe(true);
-    expect(unregistered!.isRegistered).toBe(false);
-  });
-
-  it('includes lastActivity from chat metadata', () => {
+  it('includes lastMessageTime from chat metadata', () => {
     repo.storeMetadata('tg:group1', { timestamp: '2024-06-15T12:00:00.000Z', name: 'Active Group', isGroup: true });
 
-    const available = repo.getAvailableGroups();
-    expect(available[0].lastActivity).toBe('2024-06-15T12:00:00.000Z');
+    const available = repo.getAvailableGroupChats();
+    expect(available[0].lastMessageTime).toBe('2024-06-15T12:00:00.000Z');
   });
 });

@@ -177,16 +177,16 @@ describe('registerGroup', () => {
     expect(fs.default.mkdirSync).toHaveBeenCalledWith('/tmp/test-groups/telegram_dir-test/logs', { recursive: true });
   });
 
-  it('copies global CLAUDE.local.md for non-main groups', async () => {
+  it('copies global CLAUDE.md for non-main groups', async () => {
     const fs = await import('fs');
     (fs.default.existsSync as any).mockReturnValue(true);
 
     repo.registerGroup('tg:secondary', { name: 'Secondary', folder: 'telegram_secondary', addedAt: '2024-01-01T00:00:00.000Z', isMain: false });
 
-    expect(fs.default.copyFileSync).toHaveBeenCalledWith('/tmp/test-groups/global/CLAUDE.local.md', '/tmp/test-groups/telegram_secondary/CLAUDE.local.md');
+    expect(fs.default.copyFileSync).toHaveBeenCalledWith('/tmp/test-groups/global/CLAUDE.md', '/tmp/test-groups/telegram_secondary/CLAUDE.md');
   });
 
-  it('does not copy global CLAUDE.local.md for main group', async () => {
+  it('does not copy global CLAUDE.md for main group', async () => {
     const fs = await import('fs');
 
     repo.registerGroup('tg:main', { name: 'Main', folder: 'telegram_main', addedAt: '2024-01-01T00:00:00.000Z', isMain: true });
