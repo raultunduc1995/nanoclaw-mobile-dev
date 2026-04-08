@@ -18,18 +18,16 @@ export interface Message {
 
 export interface MessagesRepository {
   save(msg: Message): void;
-  getNew(jids: string[], lastTimestamp: string, limit?: number): { messages: Message[]; newTimestamp: string };
-  getSince(chatJid: string, sinceTimestamp: string, limit?: number): Message[];
+  getNewSince(jids: Set<string>, lastTimestamp: string): { messages: Message[]; newTimestamp: string };
+  getSince(chatJid: string, sinceTimestamp: string): Message[];
 }
 
 export const createMessagesRepository = (resource: MessagesLocalResource): MessagesRepository => {
   return {
-    save: (msg: Message) => resource.store(toMessageRow(msg)),
+    save: (msg) => resource.store(toMessageRow(msg)),
 
-    getNew: (jids: string[], lastTimestamp: string, limit?: number) => {
-      if (jids.length === 0) return { messages: [], newTimestamp: lastTimestamp };
-
-      const messages = resource.getNew(jids, lastTimestamp, limit);
+    getNewSince: (jids, lastTimestamp) => {
+      const messages = resource.getNewSince([...jids], lastTimestamp);
       let newTimestamp = lastTimestamp;
       for (const msg of messages) {
         if (msg.timestamp > newTimestamp) newTimestamp = msg.timestamp;
@@ -38,8 +36,8 @@ export const createMessagesRepository = (resource: MessagesLocalResource): Messa
       return { messages: messages.map(toMessage), newTimestamp };
     },
 
-    getSince: (chatJid: string, sinceTimestamp: string, limit?: number) => {
-      const rows = resource.getSince(chatJid, sinceTimestamp, limit);
+    getSince: (chatJid, sinceTimestamp) => {
+      const rows = resource.getSince(chatJid, sinceTimestamp);
       return rows.map(toMessage);
     },
   };

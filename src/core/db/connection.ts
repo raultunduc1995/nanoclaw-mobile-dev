@@ -54,8 +54,3 @@ export function initTestDatabase(): LocalResource {
   instance = createLocalResource(new Database(':memory:'));
   return instance;
 }
-
-export function getLocalDatabase(): LocalResource {
-  if (!instance) throw new Error('Database not initialized');
-  return instance;
-}

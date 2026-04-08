@@ -2,7 +2,10 @@ import fs from 'fs';
 import path from 'path';
 
 import { logger } from '../logger.js';
+import { TIMEZONE } from '../config.js';
 import { cleanupOrphans, ensureContainerRuntimeRunning } from '../container-runtime.js';
+import { GroupQueue } from '../group-queue.js';
+
 import { type Message, resolveGroupIpcPath } from './repositories/index.js';
 import channelsRegistry, { createTelegramChannelOpts, type TelegramChannelOpts } from './channels/index.js';
 import { initLocalDatabase } from './db/index.js';
@@ -23,8 +26,8 @@ import {
   type RegisteredGroup,
   type ScheduledTask,
 } from './repositories/index.js';
-import { createMessageFlow, type MessageFlow, type MessageFlowDeps } from './flows/MessageFlow.js';
-import { GroupQueue } from '../group-queue.js';
+import { createMessageFlow, type MessageFlow, type MessageFlowDeps } from './flows/index.js';
+import { formatMessages } from './utils/index.js';
 
 let groupsRepo: GroupsRepository;
 let chatsRepo: ChatsRepository;
@@ -33,7 +36,7 @@ let routerStateRepo: RouterStateRepository;
 let tasksRepo: TasksRepository;
 let ipcHandler: IpcHandler;
 let messageFlow: MessageFlow;
-let groupQueue: GroupQueue;
+let groupQueue: GroupQueue; // TODO: Check the groupqueue implementation
 
 const initRepos = () => {
   const localResource = initLocalDatabase();
@@ -173,7 +176,13 @@ const initMessageFlow = () => {
     getRouterState: () => routerStateRepo.get(),
     getRegisteredGroups: () => groupsRepo.getAllAsRecord(),
     getRegisteredGroupsJids: () => groupsRepo.getAllJids(),
-    enqueueMessageCheck: (jid) => groupQueue.enqueueMessageCheck(jid),
+    getMessagesSince: (jid, since) => messagesRepo.getSince(jid, since),
+    getNewMessagesSince: (jids, since) => messagesRepo.getNewSince(jids, since),
+    getFormattedMessagesFor: (messages) => formatMessages(messages, TIMEZONE),
+    saveRouterState: (state) => routerStateRepo.set(state),
+    enqueueMessageCheck: (jid) => groupQueue.enqueueMessageCheck(jid), // TODO: Check the groupqueue implementation
+    sendMessageToQueue: (jid, message) => groupQueue.sendMessage(jid, message), // TODO: Check the groupqueue implementation
+    setTypingForChannel: (jid) => channelsRegistry.findChannel(jid)?.setTyping(jid)
   });
 };
 
@@ -222,6 +231,9 @@ export const main = async () => {
 
   registerCleanupHandlers();
   await registerChannels();
+
   ipcHandler.start();
+  groupQueue.setProcessMessagesFn(); // TODO: Check the groupqueue implementation
+  messageFlow.enqueuePreviousSessionLostMessages();
   messageFlow.startMessagesWatcher();
 };

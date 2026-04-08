@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { MAX_MESSAGES_PER_PROMPT } from '../../../config.js';
 
 export interface MessageRow {
   id: string;
@@ -14,8 +15,8 @@ export interface MessageRow {
 
 export interface MessagesLocalResource {
   store(msg: MessageRow): void;
-  getNew(jids: string[], lastTimestamp: string, limit?: number): MessageRow[];
-  getSince(chatJid: string, sinceTimestamp: string, limit?: number): MessageRow[];
+  getNewSince(jids: string[], lastTimestamp: string): MessageRow[];
+  getSince(chatJid: string, sinceTimestamp: string): MessageRow[];
 }
 
 export const createMessagesLocalResource = (db: Database.Database): MessagesLocalResource => ({
@@ -26,7 +27,8 @@ export const createMessagesLocalResource = (db: Database.Database): MessagesLoca
     ).run(msg.id, msg.chat_jid, msg.sender, msg.sender_name, msg.content, msg.timestamp, msg.reply_to_message_id, msg.reply_to_message_content, msg.reply_to_sender_name);
   },
 
-  getNew: (jids, lastTimestamp, limit = 200) => {
+  getNewSince: (jids, lastTimestamp) => {
+    const limit = 200;
     const placeholders = jids.map(() => '?').join(',');
     const sql = `
         SELECT * FROM (
@@ -42,7 +44,7 @@ export const createMessagesLocalResource = (db: Database.Database): MessagesLoca
     return db.prepare(sql).all(lastTimestamp, ...jids, limit) as MessageRow[];
   },
 
-  getSince: (chatJid, sinceTimestamp, limit = 200) => {
+  getSince: (chatJid, sinceTimestamp) => {
     const sql = `
         SELECT * FROM (
           SELECT *
@@ -54,6 +56,6 @@ export const createMessagesLocalResource = (db: Database.Database): MessagesLoca
         ) ORDER BY timestamp
       `;
 
-    return db.prepare(sql).all(chatJid, sinceTimestamp, limit) as MessageRow[];
+    return db.prepare(sql).all(chatJid, sinceTimestamp, MAX_MESSAGES_PER_PROMPT) as MessageRow[];
   },
 });

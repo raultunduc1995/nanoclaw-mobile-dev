@@ -138,8 +138,7 @@ export class TelegramChannel implements Channel {
     logger.info('Telegram bot stopped');
   }
 
-  async setTyping(jid: string, isTyping: boolean): Promise<void> {
-    if (!isTyping) return;
+  async setTyping(jid: string): Promise<void> {
     try {
       const numericId = jid.replace(/^tg:/, '');
       await this.bot.api.sendChatAction(numericId, 'typing');
