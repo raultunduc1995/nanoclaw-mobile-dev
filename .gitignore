@@ -18,6 +18,7 @@ CLAUDE.local.md
 CLAUDE.thehive_spec.md
 CLAUDE.own_settings.md
 CLAUDE.settings.txt
+PLAN-memory-reminder-hook.md
 
 # Secrets
 *.keys.json
@@ -35,7 +36,6 @@ CLAUDE.settings.txt
 
 # Skills system (local per-installation state)
 .nanoclaw/
-.claude/settings.local.json
 host-bridge/mac-hosts.json
 
 agents-sdk-docs
