@@ -37,5 +37,6 @@ PLAN-memory-reminder-hook.md
 # Skills system (local per-installation state)
 .nanoclaw/
 host-bridge/mac-hosts.json
+.claude/settings.local.json
 
 agents-sdk-docs
