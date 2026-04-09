@@ -8,7 +8,7 @@ import path from 'path';
 
 import { CONTAINER_IMAGE, DATA_DIR, ENABLE_MAC_CONTROL, GROUPS_DIR, TIMEZONE } from './config.js';
 import { readEnvFile } from './env.js';
-import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
+import { resolveGroupFolderPath, resolveGroupIpcPath } from './core/utils/index.js';
 import { logger } from './logger.js';
 import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs } from './container-runtime.js';
 import { validateAdditionalMounts } from './mount-security.js';

@@ -2,7 +2,7 @@ import { ContainerOutput } from '../../container-runner.js';
 import { logger } from '../../logger.js';
 
 import { RouterState, Message, RegisteredGroup } from '../repositories/index.js';
-import { delay, formatMessages } from '../utils/index.js';
+import { formatMessages } from '../utils/index.js';
 
 export interface MessageFlow {
   enqueuePreviousSessionLostMessages: () => void;
