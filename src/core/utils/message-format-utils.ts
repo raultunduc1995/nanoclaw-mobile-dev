@@ -1,6 +1,7 @@
+import { TIMEZONE } from '../../config.js';
 import { Message } from '../repositories/index.js';
 
-export const formatMessages = (messages: Message[], timezone: string): string => {
+export const formatMessages = (messages: Message[], timezone: string = TIMEZONE): string => {
   const lines = messages.map((m) => {
     const displayTime = formatLocalTime(m.timestamp, timezone);
     const replyAttr = m.replyToMessageId ? ` reply_to="${escapeXml(m.replyToMessageId)}"` : '';

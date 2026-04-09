@@ -4,7 +4,8 @@
   },
   "permissions": {
     "allow": [
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(sqlite3:*)"
     ]
   },
   "hooks": {

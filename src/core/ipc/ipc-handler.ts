@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import { CronExpressionParser } from 'cron-parser';
 
-import { DATA_DIR, IPC_POLL_INTERVAL } from '../../config.js';
+import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from '../../config.js';
 import { logger } from '../../logger.js';
+
 import { ipcTaskSchema, ipcMessageSchema, type IpcTaskData, type IpcMessageData } from './types.js';
 import type { AvailableGroup, NewScheduledTask, RegisteredGroup, ScheduledTask } from '../repositories/index.js';
-import { computeNextRun } from '../repositories/index.js';
 
 export interface IpcHandlerDeps {
   groupsDeps: {
@@ -23,10 +24,10 @@ export interface IpcHandlerDeps {
     getAvailableChatGroups: () => AvailableGroup[];
   };
   channelRegistryDeps: {
-    sendMessageTo: (jid: string, message: string) => Promise<void>; // sendMessageToChatChannel
+    sendMessageTo: (jid: string, message: string) => void;
   };
   containerRunnerDeps: {
-    writeAvailableGroupsIn: ({ groupFolder, groups, isMain }: { groupFolder: string; groups: AvailableGroup[]; isMain: boolean }) => void; // writeGroupsSnapshot({ groupFolder, groups, isMain })
+    writeAvailableGroupsIn: ({ groupFolder, groups, isMain }: { groupFolder: string; groups: AvailableGroup[]; isMain: boolean }) => void;
   };
 }
 
@@ -82,7 +83,7 @@ const createMessagesIpcHandler = (
     getRegisteredGroups: () => Record<string, RegisteredGroup>;
   },
   channelRegistryDeps: {
-    sendMessageTo: (jid: string, message: string) => Promise<void>;
+    sendMessageTo: (jid: string, message: string) => void;
   },
 ): {
   processMessages: (groupFolder: string, isMain: boolean) => Promise<void>;
@@ -94,7 +95,7 @@ const createMessagesIpcHandler = (
     const targetGroup = registeredGroups[chatJid];
 
     if (isMain || (targetGroup && targetGroup.folder === groupFolder)) {
-      await channelRegistryDeps.sendMessageTo(chatJid, text);
+      channelRegistryDeps.sendMessageTo(chatJid, text);
       logger.info({ chatJid, groupFolder }, 'IPC message sent');
     } else {
       logger.warn({ chatJid, groupFolder }, 'Unauthorized IPC message attempt blocked');
@@ -383,3 +384,54 @@ const fromIpcRegisterGroupToRegisteredGroup = (data: Extract<IpcTaskData, { type
   containerConfig: data.containerConfig,
   isMain: false,
 });
+
+export const computeNextRun = ({ scheduleType, scheduleValue }: { scheduleType: 'cron' | 'interval' | 'once'; scheduleValue: string }): string => {
+  const computeCronNextRun = () => {
+    let nextRun: string | null = null;
+
+    try {
+      const interval = CronExpressionParser.parse(scheduleValue, { tz: TIMEZONE });
+      nextRun = interval.next().toISOString();
+    } catch (error) {
+      logger.warn({ scheduleValue }, 'Invalid cron expression');
+      throw new Error(`Invalid cron expression: ${scheduleValue}`, { cause: error });
+    }
+
+    if (!nextRun) {
+      logger.warn({ scheduleValue }, 'Cron expression has no future runs');
+      throw new Error(`Cron expression has no future runs: ${scheduleValue}`);
+    }
+
+    return nextRun;
+  };
+  const computeIntervalNextRun = () => {
+    const ms = parseInt(scheduleValue, 10);
+
+    if (isNaN(ms) || ms <= 0) {
+      logger.warn({ scheduleValue }, 'Invalid interval');
+      throw new Error(`Invalid interval (must be positive integer in milliseconds): ${scheduleValue}`);
+    }
+
+    return new Date(Date.now() + ms).toISOString();
+  };
+  const computeOnceNextRun = () => {
+    const date = new Date(scheduleValue);
+
+    if (isNaN(date.getTime())) {
+      logger.warn({ scheduleValue }, 'Invalid timestamp');
+      throw new Error(`Invalid timestamp for one-time task: ${scheduleValue}`);
+    }
+
+    return date.toISOString();
+  };
+
+  if (scheduleType === 'cron') {
+    return computeCronNextRun();
+  } else if (scheduleType === 'interval') {
+    return computeIntervalNextRun();
+  } else if (scheduleType === 'once') {
+    return computeOnceNextRun();
+  } else {
+    throw new Error(`Unsupported schedule type: ${scheduleType}`);
+  }
+};

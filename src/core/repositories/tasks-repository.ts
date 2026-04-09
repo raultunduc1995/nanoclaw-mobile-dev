@@ -1,10 +1,4 @@
-import { CronExpressionParser } from 'cron-parser';
-
-import { logger } from '../../logger.js';
 import type { TasksLocalResource, TaskRow, TaskRunLogRow } from '../db/index.js';
-import { TIMEZONE } from '../../config.js';
-
-// --- Types and interfaces ---
 
 export interface NewScheduledTask {
   id: string;
@@ -34,8 +28,6 @@ export interface TaskRunLog {
   result?: string;
   error?: string;
 }
-
-// --- Repository interface and implementation ---
 
 export interface TasksRepository {
   save: (task: NewScheduledTask) => void;
@@ -126,15 +118,6 @@ const toTaskRow = (task: ScheduledTask): TaskRow => ({
   created_at: task.createdAt,
 });
 
-const toTaskRunLog = (row: TaskRunLogRow): TaskRunLog => ({
-  taskId: row.task_id,
-  runAt: row.run_at,
-  durationMs: row.duration_ms,
-  status: row.status as TaskRunLog['status'],
-  result: row.result ?? undefined,
-  error: row.error ?? undefined,
-});
-
 const toTaskRunLogRow = (log: TaskRunLog): TaskRunLogRow => ({
   task_id: log.taskId,
   run_at: log.runAt,
@@ -143,56 +126,3 @@ const toTaskRunLogRow = (log: TaskRunLog): TaskRunLogRow => ({
   result: log.result ?? null,
   error: log.error ?? null,
 });
-
-// -- Utility functions --
-
-export const computeNextRun = ({ scheduleType, scheduleValue }: { scheduleType: 'cron' | 'interval' | 'once'; scheduleValue: string }): string => {
-  const computeCronNextRun = () => {
-    let nextRun: string | null = null;
-
-    try {
-      const interval = CronExpressionParser.parse(scheduleValue, { tz: TIMEZONE });
-      nextRun = interval.next().toISOString();
-    } catch (error) {
-      logger.warn({ scheduleValue }, 'Invalid cron expression');
-      throw new Error(`Invalid cron expression: ${scheduleValue}`, { cause: error });
-    }
-
-    if (!nextRun) {
-      logger.warn({ scheduleValue }, 'Cron expression has no future runs');
-      throw new Error(`Cron expression has no future runs: ${scheduleValue}`);
-    }
-
-    return nextRun;
-  };
-  const computeIntervalNextRun = () => {
-    const ms = parseInt(scheduleValue, 10);
-
-    if (isNaN(ms) || ms <= 0) {
-      logger.warn({ scheduleValue }, 'Invalid interval');
-      throw new Error(`Invalid interval (must be positive integer in milliseconds): ${scheduleValue}`);
-    }
-
-    return new Date(Date.now() + ms).toISOString();
-  };
-  const computeOnceNextRun = () => {
-    const date = new Date(scheduleValue);
-
-    if (isNaN(date.getTime())) {
-      logger.warn({ scheduleValue }, 'Invalid timestamp');
-      throw new Error(`Invalid timestamp for one-time task: ${scheduleValue}`);
-    }
-
-    return date.toISOString();
-  };
-
-  if (scheduleType === 'cron') {
-    return computeCronNextRun();
-  } else if (scheduleType === 'interval') {
-    return computeIntervalNextRun();
-  } else if (scheduleType === 'once') {
-    return computeOnceNextRun();
-  } else {
-    throw new Error(`Unsupported schedule type: ${scheduleType}`);
-  }
-};

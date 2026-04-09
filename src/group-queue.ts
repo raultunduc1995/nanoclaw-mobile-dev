@@ -31,7 +31,7 @@ export class GroupQueue {
   private groups = new Map<string, GroupState>();
   private activeCount = 0;
   private waitingGroups: string[] = [];
-  private processMessagesFn: ((groupJid: string) => Promise<boolean>) | null = null;
+  private processMessagesFn!: ((groupJid: string) => Promise<boolean>);
   private shuttingDown = false;
 
   private getGroup(groupJid: string): GroupState {
@@ -187,13 +187,11 @@ export class GroupQueue {
     logger.debug({ groupJid, reason, activeCount: this.activeCount }, 'Starting container for group');
 
     try {
-      if (this.processMessagesFn) {
-        const success = await this.processMessagesFn(groupJid);
-        if (success) {
-          state.retryCount = 0;
-        } else {
-          this.scheduleRetry(groupJid, state);
-        }
+      const success = await this.processMessagesFn(groupJid);
+      if (success) {
+        state.retryCount = 0;
+      } else {
+        this.scheduleRetry(groupJid, state);
       }
     } catch (err) {
       logger.error({ groupJid, err }, 'Error processing messages for group');

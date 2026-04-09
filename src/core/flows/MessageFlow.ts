@@ -1,11 +1,12 @@
+import { ContainerOutput } from '../../container-runner.js';
 import { logger } from '../../logger.js';
-import { Message, RegisteredGroup } from '../repositories/index.js';
-import { RouterState } from '../repositories/router-state-repository.js';
-import { delay } from '../utils/index.js';
+import { RouterState, Message, RegisteredGroup } from '../repositories/index.js';
+import { delay, formatMessages } from '../utils/index.js';
 
 export interface MessageFlow {
   enqueuePreviousSessionLostMessages: () => void;
   startMessagesWatcher: () => Promise<void>;
+	processGroupMessages: (jid: string) => Promise<boolean>;
 }
 
 export interface MessageFlowDeps {
@@ -19,6 +20,7 @@ export interface MessageFlowDeps {
   enqueueMessageCheck: (jid: string) => void;
   sendMessageToQueue: (jid: string, message: string) => boolean;
   setTypingForChannel: (jid: string) => void;
+	runAgent: (group: RegisteredGroup, prompt: string, jid: string) => Promise<[ContainerOutput, boolean, boolean]>;
 }
 
 export const createMessageFlow = (deps: MessageFlowDeps): MessageFlow => {
@@ -49,9 +51,7 @@ export const createMessageFlow = (deps: MessageFlowDeps): MessageFlow => {
         deps.enqueueMessageCheck(jid);
         continue;
       }
-
       state.lastAgentTimestamp[jid] = groupMessages.at(-1)!.timestamp;
-
       deps.setTypingForChannel(jid);
     }
 
@@ -62,10 +62,10 @@ export const createMessageFlow = (deps: MessageFlowDeps): MessageFlow => {
     enqueuePreviousSessionLostMessages: () => {
       const registeredGroups = deps.getRegisteredGroups();
       for (const [jid, group] of Object.entries(registeredGroups)) {
-        const agentTimestamp = state?.lastAgentTimestamp?.[jid] ?? '';
-        const pendingMessages = deps.getMessagesSince(jid, agentTimestamp);
+        const pendingMessages = deps.getMessagesSince(jid, state.lastAgentTimestamp[jid] ?? '');
         if (pendingMessages.length <= 0) continue;
-        logger.info({ group: group.name, pendingCount: pendingMessages.length }, 'Recovery: found unprocessed messages');
+        
+				logger.info({ group: group.name, pendingCount: pendingMessages.length }, 'Recovery: found unprocessed messages');
         deps.enqueueMessageCheck(jid);
       }
     },
@@ -87,6 +87,33 @@ export const createMessageFlow = (deps: MessageFlowDeps): MessageFlow => {
         await delay(WATCHER_POLL_INTERVAL);
       }
     },
+
+		processGroupMessages: async (jid) => {
+			const group = deps.getRegisteredGroups()[jid];
+			if (!group) return true;
+
+			const missedMessages = deps.getMessagesSince(jid, state.lastAgentTimestamp[jid] ?? '');
+			if (missedMessages.length <= 0) return true;
+			
+			const previousAgentTimestamp = state.lastAgentTimestamp[jid] ?? '';
+			state.lastAgentTimestamp[jid] = missedMessages.at(-1)!.timestamp;
+			deps.saveRouterState(state);
+
+			const prompt = formatMessages(missedMessages);
+			const [runContainerAgentOutput, hadError, outputSentToUser] = await deps.runAgent(group, prompt, jid);
+
+			if (runContainerAgentOutput.status !== 'error' && !hadError) return true;
+			if (outputSentToUser) {
+				logger.warn({ group: group.name }, 'Agent error after output was sent, skipping cursor rollback to prevent duplicates');
+				return true;
+			}
+
+			state.lastAgentTimestamp[jid] = previousAgentTimestamp;
+			deps.saveRouterState(state);
+			logger.warn({ group: group.name },`Agent could not process the incoming messages...`);
+
+			return false;
+		}
   };
 };
 

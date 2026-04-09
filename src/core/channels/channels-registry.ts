@@ -1,4 +1,4 @@
-import { TelegramChannel, type TelegramChannelOpts } from './telegram/index.js';
+import { TelegramChannel, type TelegramChannelOpts } from './telegram/telegram.js';
 import type { Channel } from './types.js';
 
 export interface ChannelsRegistry {

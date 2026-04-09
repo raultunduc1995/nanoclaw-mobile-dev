@@ -1,5 +1,5 @@
 import channelsRegistry from './channels-registry.js';
-export { createTelegramChannelOpts, type TelegramChannelOpts } from './telegram/index.js';
-export type { Channel } from './types.js';
+export { createTelegramChannelOpts, type TelegramChannel, type TelegramChannelOpts } from './telegram/telegram.js';
+export type { Channel, ChannelOpts } from './types.js';
 
 export default channelsRegistry;

@@ -1,12 +1,9 @@
-import fs from 'fs';
-import path from 'path';
-
 import { logger } from '../logger.js';
-import { TIMEZONE } from '../config.js';
+import { IDLE_TIMEOUT } from '../config.js';
 import { cleanupOrphans, ensureContainerRuntimeRunning } from '../container-runtime.js';
 import { GroupQueue } from '../group-queue.js';
+import { runContainerAgent } from '../container-runner.js';
 
-import { type Message, resolveGroupIpcPath } from './repositories/index.js';
 import channelsRegistry, { createTelegramChannelOpts, type TelegramChannelOpts } from './channels/index.js';
 import { initLocalDatabase } from './db/index.js';
 import { createIpcHandler, type IpcHandler } from './ipc/index.js';
@@ -21,12 +18,8 @@ import {
   type MessagesRepository,
   type RouterStateRepository,
   type TasksRepository,
-  type AvailableGroup,
-  type NewScheduledTask,
-  type RegisteredGroup,
-  type ScheduledTask,
 } from './repositories/index.js';
-import { createMessageFlow, type MessageFlow, type MessageFlowDeps } from './flows/index.js';
+import { createAgentFlow, createMessageFlow, createTaskFlow, type AgentFlow, type MessageFlow, type TaskFlow } from './flows/index.js';
 import { formatMessages } from './utils/index.js';
 
 let groupsRepo: GroupsRepository;
@@ -34,8 +27,10 @@ let chatsRepo: ChatsRepository;
 let messagesRepo: MessagesRepository;
 let routerStateRepo: RouterStateRepository;
 let tasksRepo: TasksRepository;
-let ipcHandler: IpcHandler;
 let messageFlow: MessageFlow;
+let taskFlow: TaskFlow;
+let agentFlow: AgentFlow;
+let ipcHandler: IpcHandler;
 let groupQueue: GroupQueue; // TODO: Check the groupqueue implementation
 
 const initRepos = () => {
@@ -47,128 +42,28 @@ const initRepos = () => {
   tasksRepo = createTasksRepository(localResource.tasks);
 };
 
-const initIpcHandler = () => {
-  // TODO: MOVE THESE FUNCTIONS INTO A SEPARATE COMPONENT (CONTAINER-RUNNER)
-  const writeTasksSnapshot = ({
-    folder,
-    isMain,
-    taskRows,
-  }: {
-    folder: string;
-    isMain: boolean;
-    taskRows: {
-      id: string;
-      groupFolder: string;
-      prompt: string;
-      script?: string;
-      schedule_type: 'cron' | 'interval' | 'once';
-      schedule_value: string;
-      status: 'active' | 'paused' | 'completed';
-      next_run?: string;
-    }[];
-  }) => {
-    // Write filtered tasks to the group's IPC directory
-    const groupIpcDir = resolveGroupIpcPath(folder);
-    fs.mkdirSync(groupIpcDir, { recursive: true });
-
-    // Main sees all tasks, others only see their own
-    const filteredTasks = isMain ? taskRows : taskRows.filter((t) => t.groupFolder === folder);
-
-    const tasksFile = path.join(groupIpcDir, 'current_tasks.json');
-    fs.writeFileSync(tasksFile, JSON.stringify(filteredTasks, null, 2));
-  };
-  const onTasksChanged = () => {
-    const tasks = tasksRepo.getAll();
-    const taskRows = tasks.map((t) => ({
-      id: t.id,
-      groupFolder: t.groupFolder,
-      prompt: t.prompt,
-      script: t.script ?? undefined,
-      schedule_type: t.scheduleType,
-      schedule_value: t.scheduleValue,
-      status: t.status,
-      next_run: t.nextRun,
-    }));
-    const registeredGroups = groupsRepo.getAllAsRecord();
-    for (const group of Object.values(registeredGroups)) {
-      writeTasksSnapshot({
-        folder: group.folder,
-        isMain: group.isMain === true,
-        taskRows,
-      });
-    }
-  };
-  const writeAvailableGroupsIn = ({ groupFolder, groups, isMain }: { groupFolder: string; groups: AvailableGroup[]; isMain: boolean }): void => {
-    const groupIpcDir = resolveGroupIpcPath(groupFolder);
-    fs.mkdirSync(groupIpcDir, { recursive: true });
-
-    // Main sees all groups; others see nothing (they can't activate groups)
-    const visibleGroups = isMain ? groups : [];
-
-    const groupsFile = path.join(groupIpcDir, 'available_groups.json');
-    fs.writeFileSync(
-      groupsFile,
-      JSON.stringify(
-        {
-          groups: visibleGroups,
-          lastSync: new Date().toISOString(),
-        },
-        null,
-        2,
-      ),
-    );
-  };
-  // --------------------------------------
-
-  const getAvailableChatGroups = () => {
-    const chats = chatsRepo.getGroupChats();
-    const registeredJids = groupsRepo.getAllJids();
-
-    return chats.map((c) => ({
-      jid: c.jid,
-      name: c.name,
-      lastActivity: c.lastMessageTime,
-      isRegistered: registeredJids.has(c.jid),
-    }));
-  };
-
-  const sendMessageToChannel = async (jid: string, message: string) => {
-    const channel = channelsRegistry.findChannel(jid);
-    if (!channel) throw Error(`No channel found for jid: ${jid}`);
-    await channel.sendMessage(jid, message);
-  };
-
-  ipcHandler = createIpcHandler({
-    groupsDeps: {
-      getById: (jid) => groupsRepo.getByJid(jid),
-      register: (jid, group) => groupsRepo.register(jid, group),
-      getRegisteredGroups: () => groupsRepo.getAllAsRecord(),
-    },
-    tasksDeps: {
-      save: (task) => {
-        tasksRepo.save(task);
-        onTasksChanged();
-      },
-      getById: (id) => tasksRepo.getById(id),
-      update: (task) => {
-        tasksRepo.update(task);
-        onTasksChanged();
-      },
-      delete: (id) => {
-        tasksRepo.delete(id);
-        onTasksChanged();
-      },
-    },
-    chatsDeps: {
-      getAvailableChatGroups: () => getAvailableChatGroups(),
-    },
-    channelRegistryDeps: {
-      sendMessageTo: (jid, message) => sendMessageToChannel(jid, message),
-    },
-    containerRunnerDeps: {
-      writeAvailableGroupsIn: ({ groupFolder, groups, isMain }) => writeAvailableGroupsIn({ groupFolder, groups, isMain }),
-    },
+const initTaskFlow = () => {
+  taskFlow = createTaskFlow({
+    getAllScheduledTasks: () => tasksRepo.getAll(),
+    getAllRegisteredGroupsAsRecord: () => groupsRepo.getAllAsRecord(),
   });
+};
+
+const initAgentFlow = () => {
+  agentFlow = createAgentFlow();
+};
+
+// cross-repo query. It doesn't belong anywhere...
+const getAvailableChatGroups = () => {
+  const chats = chatsRepo.getGroupChats();
+  const registeredJids = groupsRepo.getAllJids();
+
+  return chats.map((c) => ({
+    jid: c.jid,
+    name: c.name,
+    lastActivity: c.lastMessageTime,
+    isRegistered: registeredJids.has(c.jid),
+  }));
 };
 
 const initMessageFlow = () => {
@@ -178,11 +73,107 @@ const initMessageFlow = () => {
     getRegisteredGroupsJids: () => groupsRepo.getAllJids(),
     getMessagesSince: (jid, since) => messagesRepo.getSince(jid, since),
     getNewMessagesSince: (jids, since) => messagesRepo.getNewSince(jids, since),
-    getFormattedMessagesFor: (messages) => formatMessages(messages, TIMEZONE),
+    getFormattedMessagesFor: (messages) => formatMessages(messages),
     saveRouterState: (state) => routerStateRepo.set(state),
     enqueueMessageCheck: (jid) => groupQueue.enqueueMessageCheck(jid), // TODO: Check the groupqueue implementation
     sendMessageToQueue: (jid, message) => groupQueue.sendMessage(jid, message), // TODO: Check the groupqueue implementation
-    setTypingForChannel: (jid) => channelsRegistry.findChannel(jid)?.setTyping(jid)
+    setTypingForChannel: (jid) => channelsRegistry.findChannel(jid)?.setTyping(jid),
+    // TODO: REFACTOR IMMEDIATELY
+    runAgent: async (group, prompt, jid) => {
+      channelsRegistry.findChannel(jid)?.setTyping(jid);
+
+      // Track idle timer for closing stdin when agent is idle
+      let idleTimer: ReturnType<typeof setTimeout> | null = null;
+      const resetIdleTimer = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          logger.debug({ group: group.name }, 'Idle timeout, closing container stdin');
+          groupQueue.closeStdin(jid);
+        }, IDLE_TIMEOUT);
+      };
+
+      taskFlow.onTasksChangedFor(group);
+      agentFlow.writeAvailableGroupsIn(group.folder, getAvailableChatGroups(), group.isMain);
+      let hadError = false;
+      let outputSentToUser = false;
+      // Run container agent...
+      const runContainerAgentOutput = await runContainerAgent(
+        {
+          name: group.name,
+          folder: group.folder,
+          trigger: '',
+          added_at: group.addedAt,
+        },
+        {
+          prompt: prompt,
+          groupFolder: group.folder,
+          chatJid: jid,
+          isMain: group.isMain,
+        },
+        (childProcess, containerName) => groupQueue.registerProcess(jid, childProcess, containerName, group.folder),
+        async (containerOutput) => {
+          // Streaming output callback — called for each agent result
+          if (containerOutput.result) {
+            const raw = typeof containerOutput.result === 'string' ? containerOutput.result : JSON.stringify(containerOutput.result);
+            // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
+            const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+            logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
+            if (text) {
+              await (channelsRegistry.findChannel(jid)?.sendMessage(jid, text) ?? Promise.resolve());
+              outputSentToUser = true;
+            }
+            // Only reset idle timer on actual results, not session-update markers (result: null)
+            resetIdleTimer();
+          }
+
+          if (containerOutput.status === 'success') {
+            groupQueue.notifyIdle(jid);
+          }
+
+          if (containerOutput.status === 'error') {
+            hadError = true;
+          }
+        },
+      );
+
+      if (idleTimer) clearTimeout(idleTimer);
+
+      return [runContainerAgentOutput, hadError, outputSentToUser];
+    },
+  });
+};
+
+const initIpcHandler = () => {
+  ipcHandler = createIpcHandler({
+    groupsDeps: {
+      getById: (jid) => groupsRepo.getByJid(jid),
+      register: (jid, group) => groupsRepo.register(jid, group),
+      getRegisteredGroups: () => groupsRepo.getAllAsRecord(),
+    },
+    tasksDeps: {
+      save: (task) => {
+        tasksRepo.save(task);
+        taskFlow.onTasksChanged();
+      },
+      getById: (id) => tasksRepo.getById(id),
+      update: (task) => {
+        tasksRepo.update(task);
+        taskFlow.onTasksChanged();
+      },
+      delete: (id) => {
+        tasksRepo.delete(id);
+        taskFlow.onTasksChanged();
+      },
+    },
+    chatsDeps: {
+      getAvailableChatGroups: () => getAvailableChatGroups(),
+    },
+    channelRegistryDeps: {
+      sendMessageTo: (jid, message) => channelsRegistry.findChannel(jid)?.sendMessage(jid, message),
+    },
+    containerRunnerDeps: {
+      writeAvailableGroupsIn: ({ groupFolder, groups, isMain }) => agentFlow.writeAvailableGroupsIn(groupFolder, groups, isMain),
+    },
   });
 };
 
@@ -191,9 +182,11 @@ const initMain = () => {
   cleanupOrphans();
 
   initRepos();
-  initIpcHandler();
   groupQueue = new GroupQueue();
+  initTaskFlow();
+  initAgentFlow();
   initMessageFlow();
+  initIpcHandler();
 };
 
 const registerCleanupHandlers = () => {
@@ -226,6 +219,7 @@ const registerChannels = async () => {
   channelsRegistry.registerTelegramChannel(telegramOps);
   await channelsRegistry.connectAll();
 };
+
 export const main = async () => {
   initMain();
 
@@ -233,7 +227,7 @@ export const main = async () => {
   await registerChannels();
 
   ipcHandler.start();
-  groupQueue.setProcessMessagesFn(); // TODO: Check the groupqueue implementation
+  groupQueue.setProcessMessagesFn(messageFlow.processGroupMessages);
   messageFlow.enqueuePreviousSessionLostMessages();
   messageFlow.startMessagesWatcher();
 };
