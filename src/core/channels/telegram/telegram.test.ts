@@ -64,7 +64,7 @@ vi.mock('grammy', () => ({
   },
 }));
 
-import { TelegramChannel, TelegramChannelOpts } from './index.js';
+import { TelegramChannel, TelegramChannelOpts } from './telegram.js';
 
 // --- Test helpers ---
 
@@ -524,19 +524,9 @@ describe('TelegramChannel', () => {
       const channel = new TelegramChannel(opts);
       await channel.connect();
 
-      await channel.setTyping('tg:100200300', true);
+      await channel.setTyping('tg:100200300');
 
       expect(currentBot().api.sendChatAction).toHaveBeenCalledWith('100200300', 'typing');
-    });
-
-    it('does nothing when isTyping is false', async () => {
-      const opts = createTestOpts();
-      const channel = new TelegramChannel(opts);
-      await channel.connect();
-
-      await channel.setTyping('tg:100200300', false);
-
-      expect(currentBot().api.sendChatAction).not.toHaveBeenCalled();
     });
 
     it('does nothing when bot is not initialized', async () => {
@@ -544,7 +534,7 @@ describe('TelegramChannel', () => {
       const channel = new TelegramChannel(opts);
 
       // Don't connect
-      await channel.setTyping('tg:100200300', true);
+      await channel.setTyping('tg:100200300');
 
       // No error, no API call
     });
@@ -556,7 +546,7 @@ describe('TelegramChannel', () => {
 
       currentBot().api.sendChatAction.mockRejectedValueOnce(new Error('Rate limited'));
 
-      await expect(channel.setTyping('tg:100200300', true)).resolves.toBeUndefined();
+      await expect(channel.setTyping('tg:100200300')).resolves.toBeUndefined();
     });
   });
 

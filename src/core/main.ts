@@ -42,15 +42,64 @@ const initRepos = () => {
   tasksRepo = createTasksRepository(localResource.tasks);
 };
 
+const initAgentFlow = () => {
+  agentFlow = createAgentFlow();
+};
+
 const initTaskFlow = () => {
   taskFlow = createTaskFlow({
     getAllScheduledTasks: () => tasksRepo.getAll(),
     getAllRegisteredGroupsAsRecord: () => groupsRepo.getAllAsRecord(),
-  });
-};
+    getDueTasks: () => tasksRepo.getDue(),
+    getTaskById: (id) => tasksRepo.getById(id),
+    updateTask: (task) => tasksRepo.update(task),
+    updateTaskAfterRun: (id, lastResult, nextRun) => tasksRepo.updateAfterRun(id, lastResult, nextRun),
+    enqueueTask: (jid, taskId, fn) => groupQueue.enqueueTask(jid, taskId, fn),
+    runTaskAgent: async (group, task) => {
+      
+      let closeTimer: ReturnType<typeof setTimeout> | null = null;
+      let result: string | null = null;
+      let error: string | null = null;
 
-const initAgentFlow = () => {
-  agentFlow = createAgentFlow();
+      const TASK_CLOSE_DELAY_MS = 10_000;
+      const scheduleClose = () => {
+        if (closeTimer) return;
+        closeTimer = setTimeout(() => {
+          groupQueue.closeStdin(task.chatJid);
+        }, TASK_CLOSE_DELAY_MS);
+      };
+
+      try {
+        const output = await runContainerAgent(
+          { name: group.name, folder: group.folder, trigger: '', added_at: group.addedAt },
+          { prompt: task.prompt, groupFolder: task.groupFolder, chatJid: task.chatJid, isMain: group.isMain, isScheduledTask: true, script: task.script },
+          (proc, containerName) => groupQueue.registerProcess(task.chatJid, proc, containerName, task.groupFolder),
+          async (streamedOutput) => {
+            if (streamedOutput.result) {
+              result = streamedOutput.result;
+              await (channelsRegistry.findChannel(task.chatJid)?.sendMessage(task.chatJid, streamedOutput.result) ?? Promise.resolve());
+              scheduleClose();
+            }
+            if (streamedOutput.status === 'success') {
+              groupQueue.notifyIdle(task.chatJid);
+              scheduleClose();
+            }
+            if (streamedOutput.status === 'error') {
+              error = streamedOutput.error || 'Unknown error';
+            }
+          },
+        );
+        if (closeTimer) clearTimeout(closeTimer);
+        if (output.status === 'error') error = output.error || 'Unknown error';
+        else if (output.result) result = output.result;
+      } catch (err) {
+        if (closeTimer) clearTimeout(closeTimer);
+        error = err instanceof Error ? err.message : String(err);
+      }
+
+      return { result, error };
+    },
+  });
 };
 
 // cross-repo query. It doesn't belong anywhere...
@@ -98,18 +147,8 @@ const initMessageFlow = () => {
       let outputSentToUser = false;
       // Run container agent...
       const runContainerAgentOutput = await runContainerAgent(
-        {
-          name: group.name,
-          folder: group.folder,
-          trigger: '',
-          added_at: group.addedAt,
-        },
-        {
-          prompt: prompt,
-          groupFolder: group.folder,
-          chatJid: jid,
-          isMain: group.isMain,
-        },
+        { name: group.name, folder: group.folder, trigger: '', added_at: group.addedAt },
+        { prompt: prompt, groupFolder: group.folder, chatJid: jid, isMain: group.isMain },
         (childProcess, containerName) => groupQueue.registerProcess(jid, childProcess, containerName, group.folder),
         async (containerOutput) => {
           // Streaming output callback — called for each agent result
@@ -183,8 +222,8 @@ const initMain = () => {
 
   initRepos();
   groupQueue = new GroupQueue();
-  initTaskFlow();
   initAgentFlow();
+  initTaskFlow();
   initMessageFlow();
   initIpcHandler();
 };
@@ -230,4 +269,5 @@ export const main = async () => {
   groupQueue.setProcessMessagesFn(messageFlow.processGroupMessages);
   messageFlow.enqueuePreviousSessionLostMessages();
   messageFlow.startMessagesWatcher();
+  taskFlow.startSchedulerLoop();
 };

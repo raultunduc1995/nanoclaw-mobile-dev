@@ -1,12 +1,13 @@
 import { ContainerOutput } from '../../container-runner.js';
 import { logger } from '../../logger.js';
+
 import { RouterState, Message, RegisteredGroup } from '../repositories/index.js';
 import { delay, formatMessages } from '../utils/index.js';
 
 export interface MessageFlow {
   enqueuePreviousSessionLostMessages: () => void;
   startMessagesWatcher: () => Promise<void>;
-	processGroupMessages: (jid: string) => Promise<boolean>;
+  processGroupMessages: (jid: string) => Promise<boolean>;
 }
 
 export interface MessageFlowDeps {
@@ -20,7 +21,7 @@ export interface MessageFlowDeps {
   enqueueMessageCheck: (jid: string) => void;
   sendMessageToQueue: (jid: string, message: string) => boolean;
   setTypingForChannel: (jid: string) => void;
-	runAgent: (group: RegisteredGroup, prompt: string, jid: string) => Promise<[ContainerOutput, boolean, boolean]>;
+  runAgent: (group: RegisteredGroup, prompt: string, jid: string) => Promise<[ContainerOutput, boolean, boolean]>;
 }
 
 export const createMessageFlow = (deps: MessageFlowDeps): MessageFlow => {
@@ -58,14 +59,23 @@ export const createMessageFlow = (deps: MessageFlowDeps): MessageFlow => {
     deps.saveRouterState(state);
   };
 
+  const loop = async () => {
+    try {
+      watchForIncomingMessages();
+    } catch (error) {
+      logger.error({ error }, `Could not process incoming message...`);
+    }
+    setTimeout(loop, WATCHER_POLL_INTERVAL);
+  };
+
   return {
     enqueuePreviousSessionLostMessages: () => {
       const registeredGroups = deps.getRegisteredGroups();
       for (const [jid, group] of Object.entries(registeredGroups)) {
         const pendingMessages = deps.getMessagesSince(jid, state.lastAgentTimestamp[jid] ?? '');
         if (pendingMessages.length <= 0) continue;
-        
-				logger.info({ group: group.name, pendingCount: pendingMessages.length }, 'Recovery: found unprocessed messages');
+
+        logger.info({ group: group.name, pendingCount: pendingMessages.length }, 'Recovery: found unprocessed messages');
         deps.enqueueMessageCheck(jid);
       }
     },
@@ -78,42 +88,35 @@ export const createMessageFlow = (deps: MessageFlowDeps): MessageFlow => {
       isRunning = true;
       logger.info(`Starting watching for incoming messages...`);
 
-      while (true) {
-        try {
-          watchForIncomingMessages();
-        } catch (error) {
-          logger.error({ error }, `Could not process incoming message...`);
-        }
-        await delay(WATCHER_POLL_INTERVAL);
-      }
+      loop();
     },
 
-		processGroupMessages: async (jid) => {
-			const group = deps.getRegisteredGroups()[jid];
-			if (!group) return true;
+    processGroupMessages: async (jid) => {
+      const group = deps.getRegisteredGroups()[jid];
+      if (!group) return true;
 
-			const missedMessages = deps.getMessagesSince(jid, state.lastAgentTimestamp[jid] ?? '');
-			if (missedMessages.length <= 0) return true;
-			
-			const previousAgentTimestamp = state.lastAgentTimestamp[jid] ?? '';
-			state.lastAgentTimestamp[jid] = missedMessages.at(-1)!.timestamp;
-			deps.saveRouterState(state);
+      const missedMessages = deps.getMessagesSince(jid, state.lastAgentTimestamp[jid] ?? '');
+      if (missedMessages.length <= 0) return true;
 
-			const prompt = formatMessages(missedMessages);
-			const [runContainerAgentOutput, hadError, outputSentToUser] = await deps.runAgent(group, prompt, jid);
+      const previousAgentTimestamp = state.lastAgentTimestamp[jid] ?? '';
+      state.lastAgentTimestamp[jid] = missedMessages.at(-1)!.timestamp;
+      deps.saveRouterState(state);
 
-			if (runContainerAgentOutput.status !== 'error' && !hadError) return true;
-			if (outputSentToUser) {
-				logger.warn({ group: group.name }, 'Agent error after output was sent, skipping cursor rollback to prevent duplicates');
-				return true;
-			}
+      const prompt = formatMessages(missedMessages);
+      const [runContainerAgentOutput, hadError, outputSentToUser] = await deps.runAgent(group, prompt, jid);
 
-			state.lastAgentTimestamp[jid] = previousAgentTimestamp;
-			deps.saveRouterState(state);
-			logger.warn({ group: group.name },`Agent could not process the incoming messages...`);
+      if (runContainerAgentOutput.status !== 'error' && !hadError) return true;
+      if (outputSentToUser) {
+        logger.warn({ group: group.name }, 'Agent error after output was sent, skipping cursor rollback to prevent duplicates');
+        return true;
+      }
 
-			return false;
-		}
+      state.lastAgentTimestamp[jid] = previousAgentTimestamp;
+      deps.saveRouterState(state);
+      logger.warn({ group: group.name }, `Agent could not process the incoming messages...`);
+
+      return false;
+    },
   };
 };
 

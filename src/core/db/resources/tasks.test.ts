@@ -139,9 +139,8 @@ describe('delete', () => {
     expect(tasks.getById('task-1')).toBeUndefined();
   });
 
-  it('deletes associated run logs', () => {
+  it('deletes task', () => {
     tasks.create(row());
-    tasks.logRun({ task_id: 'task-1', run_at: '2024-01-01T00:00:00.000Z', duration_ms: 100, status: 'success', result: 'ok', error: null });
     tasks.delete('task-1');
     expect(tasks.getById('task-1')).toBeUndefined();
   });
@@ -191,14 +190,3 @@ describe('updateAfterRun', () => {
   });
 });
 
-describe('logRun', () => {
-  it('does not throw when logging a run', () => {
-    tasks.create(row());
-    expect(() => tasks.logRun({ task_id: 'task-1', run_at: '2024-01-01T00:00:00.000Z', duration_ms: 500, status: 'success', result: 'ok', error: null })).not.toThrow();
-  });
-
-  it('logs error runs', () => {
-    tasks.create(row());
-    expect(() => tasks.logRun({ task_id: 'task-1', run_at: '2024-01-01T00:00:00.000Z', duration_ms: 100, status: 'error', result: null, error: 'timeout' })).not.toThrow();
-  });
-});

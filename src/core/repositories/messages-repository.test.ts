@@ -86,15 +86,13 @@ describe('getMessagesSince', () => {
     expect(result[0].content).toBe('third');
   });
 
-  it('caps to limit', () => {
-    const result = repo.getSince('tg:grp', '2024-01-01T00:00:00.000Z', 2);
-    expect(result).toHaveLength(2);
-    expect(result[0].content).toBe('second');
-    expect(result[1].content).toBe('third');
+  it('returns all messages after timestamp', () => {
+    const result = repo.getSince('tg:grp', '2024-01-01T00:00:00.000Z');
+    expect(result).toHaveLength(3);
   });
 });
 
-describe('getNewMessages', () => {
+describe('getNewSince', () => {
   beforeEach(() => {
     db.chats.upsert('tg:g1', { timestamp: '2024-01-01T00:00:00.000Z', name: 'G1', channel: 'telegram', isGroup: true });
     db.chats.upsert('tg:g2', { timestamp: '2024-01-01T00:00:00.000Z', name: 'G2', channel: 'telegram', isGroup: true });
@@ -104,19 +102,19 @@ describe('getNewMessages', () => {
   });
 
   it('returns messages across groups with updated timestamp', () => {
-    const { messages, newTimestamp } = repo.getNew(['tg:g1', 'tg:g2'], '2024-01-01T00:00:00.000Z');
+    const { messages, newTimestamp } = repo.getNewSince(new Set(['tg:g1', 'tg:g2']), '2024-01-01T00:00:00.000Z');
     expect(messages).toHaveLength(3);
     expect(newTimestamp).toBe('2024-01-01T00:00:03.000Z');
   });
 
   it('returns empty for no groups', () => {
-    const { messages, newTimestamp } = repo.getNew([], '');
+    const { messages, newTimestamp } = repo.getNewSince(new Set([]), '');
     expect(messages).toHaveLength(0);
     expect(newTimestamp).toBe('');
   });
 
   it('returns domain types with camelCase fields', () => {
-    const { messages } = repo.getNew(['tg:g1'], '2024-01-01T00:00:00.000Z');
+    const { messages } = repo.getNewSince(new Set(['tg:g1']), '2024-01-01T00:00:00.000Z');
     expect(messages[0].chatJid).toBe('tg:g1');
     expect(messages[0].senderName).toBe('User');
   });

@@ -198,16 +198,3 @@ describe('updateAfterRun', () => {
   });
 });
 
-// --- saveTaskRunLog ---
-
-describe('saveTaskRunLog', () => {
-  it('saves success log', () => {
-    repo.save(task());
-    expect(() => repo.saveRunLog({ taskId: 'task-1', runAt: '2024-01-01T00:00:00.000Z', durationMs: 500, status: 'success', result: 'ok' })).not.toThrow();
-  });
-
-  it('saves error log', () => {
-    repo.save(task());
-    expect(() => repo.saveRunLog({ taskId: 'task-1', runAt: '2024-01-01T00:00:00.000Z', durationMs: 100, status: 'error', error: 'timeout' })).not.toThrow();
-  });
-});

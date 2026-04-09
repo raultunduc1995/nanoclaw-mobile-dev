@@ -1,4 +1,4 @@
-import type { TasksLocalResource, TaskRow, TaskRunLogRow } from '../db/index.js';
+import type { TasksLocalResource, TaskRow } from '../db/index.js';
 
 export interface NewScheduledTask {
   id: string;
@@ -20,15 +20,6 @@ export interface ScheduledTask extends Omit<NewScheduledTask, `nextRun`> {
   lastResult?: string;
 }
 
-export interface TaskRunLog {
-  taskId: string;
-  runAt: string;
-  durationMs: number;
-  status: 'success' | 'error';
-  result?: string;
-  error?: string;
-}
-
 export interface TasksRepository {
   save: (task: NewScheduledTask) => void;
   getById: (id: string) => ScheduledTask | undefined;
@@ -38,7 +29,6 @@ export interface TasksRepository {
   delete: (id: string) => void;
   getDue: () => ScheduledTask[];
   updateAfterRun: (id: string, lastResult: string, nextRun?: string) => void;
-  saveRunLog: (log: TaskRunLog) => void;
 }
 
 export const createTasksRepository = (resource: TasksLocalResource): TasksRepository => ({
@@ -80,8 +70,6 @@ export const createTasksRepository = (resource: TasksLocalResource): TasksReposi
   getDue: () => resource.getDue().map(toScheduledTask),
 
   updateAfterRun: (id, lastResult, nextRun = undefined) => resource.updateAfterRun(id, nextRun ?? null, lastResult),
-
-  saveRunLog: (log) => resource.logRun(toTaskRunLogRow(log)),
 });
 
 // --- Mapping functions ---
@@ -116,13 +104,4 @@ const toTaskRow = (task: ScheduledTask): TaskRow => ({
   last_result: task.lastResult ?? null,
   status: task.status,
   created_at: task.createdAt,
-});
-
-const toTaskRunLogRow = (log: TaskRunLog): TaskRunLogRow => ({
-  task_id: log.taskId,
-  run_at: log.runAt,
-  duration_ms: log.durationMs,
-  status: log.status,
-  result: log.result ?? null,
-  error: log.error ?? null,
 });

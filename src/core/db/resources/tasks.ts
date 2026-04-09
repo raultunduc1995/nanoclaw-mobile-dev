@@ -16,15 +16,6 @@ export interface TaskRow {
   created_at: string;
 }
 
-export interface TaskRunLogRow {
-  task_id: string;
-  run_at: string;
-  duration_ms: number;
-  status: string;
-  result: string | null;
-  error: string | null;
-}
-
 export interface TasksLocalResource {
   create(task: TaskRow): void;
   getById(id: string): TaskRow | undefined;
@@ -34,7 +25,6 @@ export interface TasksLocalResource {
   delete(id: string): void;
   getDue(): TaskRow[];
   updateAfterRun(id: string, nextRun: string | null, lastResult: string): void;
-  logRun(log: TaskRunLogRow): void;
 }
 
 export const createTasksLocalResource = (db: Database.Database): TasksLocalResource => ({
@@ -97,16 +87,5 @@ export const createTasksLocalResource = (db: Database.Database): TasksLocalResou
          SET next_run = ?, last_run = ?, last_result = ?, status = CASE WHEN ? IS NULL THEN 'completed' ELSE status END
          WHERE id = ?`,
     ).run(nextRun, now, lastResult, nextRun, id);
-  },
-
-  logRun: (log) => {
-    db.prepare(`INSERT INTO task_run_logs (task_id, run_at, duration_ms, status, result, error) VALUES (?, ?, ?, ?, ?, ?)`).run(
-      log.task_id,
-      log.run_at,
-      log.duration_ms,
-      log.status,
-      log.result,
-      log.error,
-    );
   },
 });

@@ -100,15 +100,15 @@ describe('getSince', () => {
     expect(result).toHaveLength(3);
   });
 
-  it('caps to limit and returns most recent in chronological order', () => {
-    const result = messages.getSince('tg:grp', '2024-01-01T00:00:00.000Z', 2);
-    expect(result).toHaveLength(2);
-    expect(result[0].content).toBe('second');
-    expect(result[1].content).toBe('third');
+  it('returns all messages in chronological order', () => {
+    const result = messages.getSince('tg:grp', '2024-01-01T00:00:00.000Z');
+    expect(result).toHaveLength(3);
+    expect(result[0].content).toBe('first');
+    expect(result[2].content).toBe('third');
   });
 });
 
-describe('getNew', () => {
+describe('getNewSince', () => {
   beforeEach(() => {
     db.chats.upsert('tg:g1', { timestamp: '2024-01-01T00:00:00.000Z', name: 'G1', channel: 'telegram', isGroup: true });
     db.chats.upsert('tg:g2', { timestamp: '2024-01-01T00:00:00.000Z', name: 'G2', channel: 'telegram', isGroup: true });
@@ -118,25 +118,23 @@ describe('getNew', () => {
   });
 
   it('returns messages across multiple groups', () => {
-    const result = messages.getNew(['tg:g1', 'tg:g2'], '2024-01-01T00:00:00.000Z');
+    const result = messages.getNewSince(['tg:g1', 'tg:g2'], '2024-01-01T00:00:00.000Z');
     expect(result).toHaveLength(3);
   });
 
   it('filters by timestamp', () => {
-    const result = messages.getNew(['tg:g1', 'tg:g2'], '2024-01-01T00:00:02.000Z');
+    const result = messages.getNewSince(['tg:g1', 'tg:g2'], '2024-01-01T00:00:02.000Z');
     expect(result).toHaveLength(1);
     expect(result[0].content).toBe('g1 second');
   });
 
   it('returns empty for no groups', () => {
-    const result = messages.getNew([], '');
+    const result = messages.getNewSince([], '');
     expect(result).toHaveLength(0);
   });
 
-  it('caps to limit and returns most recent', () => {
-    const result = messages.getNew(['tg:g1', 'tg:g2'], '2024-01-01T00:00:00.000Z', 2);
-    expect(result).toHaveLength(2);
-    expect(result[0].content).toBe('g2 first');
-    expect(result[1].content).toBe('g1 second');
+  it('returns all messages across groups', () => {
+    const result = messages.getNewSince(['tg:g1', 'tg:g2'], '2024-01-01T00:00:00.000Z');
+    expect(result).toHaveLength(3);
   });
 });

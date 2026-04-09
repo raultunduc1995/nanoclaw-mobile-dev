@@ -7,6 +7,7 @@ import { logger } from '../../logger.js';
 
 import { ipcTaskSchema, ipcMessageSchema, type IpcTaskData, type IpcMessageData } from './types.js';
 import type { AvailableGroup, NewScheduledTask, RegisteredGroup, ScheduledTask } from '../repositories/index.js';
+import { ZodSafeParseResult } from 'zod';
 
 export interface IpcHandlerDeps {
   groupsDeps: {
@@ -109,18 +110,8 @@ const createMessagesIpcHandler = (
       for (const file of messagesFiles) {
         const filePath = path.join(messagesDir, file);
         try {
-          const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-          const parsed = ipcMessageSchema.safeParse(raw);
-
-          if (!parsed.success) {
-            logger.warn({ file, groupFolder, errors: parsed.error.issues }, 'Invalid IPC message file');
-            moveToErrors(filePath, groupFolder, file);
-            continue;
-          }
-
+          const parsed = extractMessageDataFromFile({ filePath, groupFolder, file });
           await processMessage(parsed.data, { groupFolder, isMain });
-
-          fs.unlinkSync(filePath);
         } catch (err) {
           logger.error({ file, groupFolder, err }, 'Error processing IPC message');
           moveToErrors(filePath, groupFolder, file);
@@ -275,19 +266,9 @@ const createTasksIpcHandler = (
 
       for (const file of tasksFiles) {
         const filePath = path.join(tasksDir, file);
-
         try {
-          const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-          const parsed = ipcTaskSchema.safeParse(raw);
-          if (!parsed.success) {
-            logger.warn({ file, groupFolder, errors: parsed.error.issues }, 'Invalid IPC task file');
-            moveToErrors(filePath, groupFolder, file);
-            continue;
-          }
-
+          const parsed = extractTaskDataFromFile({ filePath, groupFolder, file });
           await processTaskCommand(parsed.data, { groupFolder, isMain });
-
-          fs.unlinkSync(filePath);
         } catch (err) {
           logger.error({ file, groupFolder, err }, 'Error processing IPC task');
           moveToErrors(filePath, groupFolder, file);
@@ -302,6 +283,21 @@ const createTasksIpcHandler = (
 // --- IPC file handling utilities ---
 
 const ipcBaseDir = path.join(DATA_DIR, 'ipc');
+
+type PathGoupFile = { filePath: string, groupFolder: string, file: string };
+const extractMessageDataFromFile = ({ filePath, groupFolder, file }: PathGoupFile) => extractDataFromFile(filePath, groupFolder, file, ipcMessageSchema.safeParse);
+const extractTaskDataFromFile = ({ filePath, groupFolder, file }: PathGoupFile) => extractDataFromFile(filePath, groupFolder, file, ipcTaskSchema.safeParse);
+const extractDataFromFile = <T>(filePath: string, groupFolder: string, file: string, safeParse: (raw: any) => ZodSafeParseResult<T>) => {
+  const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const parsed = safeParse(raw);
+  if (!parsed.success) {
+    logger.warn({ file, groupFolder, errors: parsed.error.issues }, 'Invalid IPC task file');
+    throw Error(`Invalid IPC task file`);
+  }
+  fs.unlinkSync(filePath);
+
+  return parsed;
+};
 
 const moveToErrors = (filePath: string, groupFolder: string, file: string) => {
   const errorDir = path.join(ipcBaseDir, 'errors');
