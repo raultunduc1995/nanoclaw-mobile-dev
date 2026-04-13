@@ -1,8 +1,7 @@
 import { logger } from '../logger.js';
 import { IDLE_TIMEOUT } from '../config.js';
-import { cleanupOrphans, ensureContainerRuntimeRunning } from '../container-runtime.js';
 import { GroupQueue } from '../group-queue.js';
-import { runContainerAgent } from '../container-runner.js';
+import { runAgent } from './agentRunner/index.js';
 
 import channelsRegistry, { createTelegramChannelOpts, type TelegramChannelOpts } from './channels/index.js';
 import { initLocalDatabase } from './db/index.js';
@@ -70,8 +69,7 @@ const initTaskFlow = () => {
       };
 
       try {
-        const output = await runContainerAgent(
-          { name: group.name, folder: group.folder, trigger: '', added_at: group.addedAt },
+        const output = await runAgent(
           { prompt: task.prompt, groupFolder: task.groupFolder, chatJid: task.chatJid, isMain: group.isMain, isScheduledTask: true, script: task.script },
           (proc, containerName) => groupQueue.registerProcess(task.chatJid, proc, containerName, task.groupFolder),
           async (streamedOutput) => {
@@ -164,9 +162,6 @@ const initIpcHandler = () => {
 };
 
 const initMain = () => {
-  ensureContainerRuntimeRunning();
-  cleanupOrphans();
-
   initRepos();
   groupQueue = new GroupQueue({
     runAgent: async (jid, groupFolder, prompt) => {
@@ -188,8 +183,7 @@ const initMain = () => {
       taskFlow.onTasksChangedFor(group);
       agentFlow.writeAvailableGroupsIn(group.folder, getAvailableChatGroups(), group.isMain);
 
-      await runContainerAgent(
-        { name: group.name, folder: group.folder, trigger: '', added_at: group.addedAt },
+      await runAgent(
         { prompt, groupFolder, chatJid: jid, isMain: group.isMain },
         (proc, containerName) => groupQueue.registerProcess(jid, proc, containerName, group.folder),
         async (containerOutput) => {
