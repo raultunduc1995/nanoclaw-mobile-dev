@@ -7,7 +7,7 @@ export interface ChannelOpts {
    *
    * @param message
    */
-  onInboundMessage: (message: Message) => void;
+  onInboundMessage: (message: Message, group: RegisteredGroup) => void;
 
   /**
    * Callback for delivering discovered chat metadata (e.g. JID, name) to the core. Called during initial sync and when new chats are detected.

@@ -1,8 +1,6 @@
 import { ChildProcess } from 'child_process';
-import fs from 'fs';
-import path from 'path';
 
-import { DATA_DIR, MAX_CONCURRENT_CONTAINERS } from './config.js';
+import { MAX_CONCURRENT_CONTAINERS } from './config.js';
 import { logger } from './logger.js';
 
 interface QueuedTask {
@@ -13,7 +11,6 @@ interface QueuedTask {
 
 interface GroupState {
   active: boolean;
-  idleWaiting: boolean;
   isTaskContainer: boolean;
   runningTaskId: string | null;
   pendingTasks: QueuedTask[];
@@ -41,7 +38,6 @@ export class GroupQueue {
     if (!state) {
       state = {
         active: false,
-        idleWaiting: false,
         isTaskContainer: false,
         runningTaskId: null,
         pendingTasks: [],
@@ -54,60 +50,38 @@ export class GroupQueue {
     return state;
   }
 
-  /**
-   * Deliver a formatted prompt to a group's container.
-   * Container not active → spawn it with the prompt directly.
-   * Container already active → write IPC file.
-   * At concurrency limit → return false.
-   */
   deliver(groupJid: string, groupFolder: string, prompt: string): boolean {
     if (this.shuttingDown) return false;
 
     const state = this.getGroup(groupJid);
-
     if (state.active) {
-      state.idleWaiting = false;
-      return this.writeIpc(groupFolder, prompt);
+      logger.debug({ groupJid }, 'Agent already active, delivery rejected');
+      return false;
     }
 
     if (this.activeCount >= MAX_CONCURRENT_CONTAINERS) {
       logger.debug({ groupJid, activeCount: this.activeCount }, 'At concurrency limit, delivery rejected');
       return false;
     }
-
     state.active = true;
-    state.idleWaiting = false;
-    state.isTaskContainer = false;
     state.groupFolder = groupFolder;
     this.activeCount++;
-    logger.debug({ groupJid, activeCount: this.activeCount }, 'Spawning container for group');
+    logger.debug({ groupJid, activeCount: this.activeCount }, 'Spawning agent for group');
 
-    this.deps.runAgent(groupJid, groupFolder, prompt).catch((err) => {
-      logger.error({ groupJid, err }, 'Error in runAgent');
-    }).finally(() => {
-      state.active = false;
-      state.process = null;
-      state.containerName = null;
-      state.groupFolder = null;
-      this.activeCount--;
-    });
+    this.deps
+      .runAgent(groupJid, groupFolder, prompt)
+      .catch((err) => {
+        logger.error({ groupJid, err }, 'Error in runAgent');
+      })
+      .finally(() => {
+        state.active = false;
+        state.process = null;
+        state.containerName = null;
+        state.groupFolder = null;
+        this.activeCount--;
+      });
 
     return true;
-  }
-
-  private writeIpc(groupFolder: string, text: string): boolean {
-    const inputDir = path.join(DATA_DIR, 'ipc', groupFolder, 'input');
-    try {
-      fs.mkdirSync(inputDir, { recursive: true });
-      const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
-      const filepath = path.join(inputDir, filename);
-      const tempPath = `${filepath}.tmp`;
-      fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
-      fs.renameSync(tempPath, filepath);
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   enqueueTask(groupJid: string, taskId: string, fn: () => Promise<void>): void {
@@ -126,10 +100,7 @@ export class GroupQueue {
 
     if (state.active) {
       state.pendingTasks.push({ id: taskId, groupJid, fn });
-      if (state.idleWaiting) {
-        this.closeStdin(groupJid);
-      }
-      logger.debug({ groupJid, taskId }, 'Container active, task queued');
+      logger.debug({ groupJid, taskId }, 'Agent active, task queued');
       return;
     }
 
@@ -143,31 +114,9 @@ export class GroupQueue {
     if (groupFolder) state.groupFolder = groupFolder;
   }
 
-  notifyIdle(groupJid: string): void {
-    const state = this.getGroup(groupJid);
-    state.idleWaiting = true;
-    if (state.pendingTasks.length > 0) {
-      this.closeStdin(groupJid);
-    }
-  }
-
-  closeStdin(groupJid: string): void {
-    const state = this.getGroup(groupJid);
-    if (!state.active || !state.groupFolder) return;
-
-    const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
-    try {
-      fs.mkdirSync(inputDir, { recursive: true });
-      fs.writeFileSync(path.join(inputDir, '_close'), '');
-    } catch {
-      // ignore
-    }
-  }
-
   private async runTask(groupJid: string, task: QueuedTask): Promise<void> {
     const state = this.getGroup(groupJid);
     state.active = true;
-    state.idleWaiting = false;
     state.isTaskContainer = true;
     state.runningTaskId = task.id;
     this.activeCount++;
@@ -203,6 +152,6 @@ export class GroupQueue {
 
   async shutdown(_gracePeriodMs: number): Promise<void> {
     this.shuttingDown = true;
-    logger.info({ activeCount: this.activeCount }, 'GroupQueue shutting down (containers detached, not killed)');
+    logger.info({ activeCount: this.activeCount }, 'GroupQueue shutting down');
   }
 }

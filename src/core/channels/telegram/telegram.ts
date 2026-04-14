@@ -89,7 +89,7 @@ export class TelegramChannel implements Channel {
         replyToMessageId,
         replyToMessageContent,
         replyToSenderName,
-      });
+      }, group);
       logger.info({ chatJid, chatName, sender: senderName }, 'Telegram message stored');
     });
 

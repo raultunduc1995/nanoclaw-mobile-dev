@@ -19,7 +19,6 @@ export interface AgentInput {
 export interface AgentOutput {
   status: 'success' | 'error';
   result: string | null;
-  newSessionId?: string;
   error?: string;
 }
 
@@ -45,7 +44,7 @@ function buildEnv(groupFolder: string): NodeJS.ProcessEnv {
 export async function runAgent(
   input: AgentInput,
   onProcess: (proc: ChildProcess, name: string) => void,
-  onOutput: (output: AgentOutput) => Promise<void>,
+  onOutput: (text: string) => Promise<void>,
 ): Promise<AgentOutput> {
   const startTime = Date.now();
   const processName = `nanoclaw-${input.groupFolder}-${Date.now()}`;
@@ -65,12 +64,11 @@ export async function runAgent(
     let stdout = '';
     let stderr = '';
     let parseBuffer = '';
-    let outputChain = Promise.resolve();
 
     proc.stdin.write(JSON.stringify(input));
     proc.stdin.end();
 
-    proc.stdout.on('data', (data) => {
+    proc.stdout.on('data', async (data) => {
       const chunk = data.toString();
       stdout += chunk;
       for (const line of chunk.trim().split('\n')) {
@@ -88,7 +86,16 @@ export async function runAgent(
 
         try {
           const parsed: AgentOutput = JSON.parse(jsonStr);
-          outputChain = outputChain.then(() => onOutput(parsed));
+          if (parsed.result) {
+            const raw = typeof parsed.result === 'string' ? parsed.result : JSON.stringify(parsed.result);
+            const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+            if (text) {
+              logger.info({ group: input.groupFolder }, `Agent output: ${raw.length} chars`);
+              await onOutput(text);
+            }
+          } else {
+            logger.debug({ group: input.groupFolder, status: parsed.status, error: parsed.error }, 'Agent output chunk with no result');
+          }
         } catch (err) {
           logger.warn({ group: input.groupFolder, err }, 'Failed to parse agent output chunk');
         }
@@ -133,10 +140,8 @@ export async function runAgent(
         return;
       }
 
-      outputChain.then(() => {
-        logger.info({ group: input.groupFolder, duration }, 'Agent process completed');
-        resolve({ status: 'success', result: null });
-      });
+      logger.info({ group: input.groupFolder, duration }, 'Agent process completed');
+      resolve({ status: 'success', result: null });
     });
   });
 }

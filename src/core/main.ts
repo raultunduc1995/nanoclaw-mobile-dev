@@ -1,5 +1,4 @@
 import { logger } from '../logger.js';
-import { IDLE_TIMEOUT } from '../config.js';
 import { GroupQueue } from '../group-queue.js';
 import { runAgent } from './agentRunner/index.js';
 
@@ -56,42 +55,21 @@ const initTaskFlow = () => {
     enqueueTask: (jid, taskId, fn) => groupQueue.enqueueTask(jid, taskId, fn),
     runTaskAgent: async (group, task) => {
       
-      let closeTimer: ReturnType<typeof setTimeout> | null = null;
       let result: string | null = null;
       let error: string | null = null;
-
-      const TASK_CLOSE_DELAY_MS = 10_000;
-      const scheduleClose = () => {
-        if (closeTimer) return;
-        closeTimer = setTimeout(() => {
-          groupQueue.closeStdin(task.chatJid);
-        }, TASK_CLOSE_DELAY_MS);
-      };
 
       try {
         const output = await runAgent(
           { prompt: task.prompt, groupFolder: task.groupFolder, chatJid: task.chatJid, isMain: group.isMain, isScheduledTask: true, script: task.script },
           (proc, containerName) => groupQueue.registerProcess(task.chatJid, proc, containerName, task.groupFolder),
-          async (streamedOutput) => {
-            if (streamedOutput.result) {
-              result = streamedOutput.result;
-              await (channelsRegistry.findChannel(task.chatJid)?.sendMessage(task.chatJid, streamedOutput.result) ?? Promise.resolve());
-              scheduleClose();
-            }
-            if (streamedOutput.status === 'success') {
-              groupQueue.notifyIdle(task.chatJid);
-              scheduleClose();
-            }
-            if (streamedOutput.status === 'error') {
-              error = streamedOutput.error || 'Unknown error';
-            }
+          async (text) => {
+            result = text;
+            await (channelsRegistry.findChannel(task.chatJid)?.sendMessage(task.chatJid, text) ?? Promise.resolve());
           },
         );
-        if (closeTimer) clearTimeout(closeTimer);
         if (output.status === 'error') error = output.error || 'Unknown error';
         else if (output.result) result = output.result;
       } catch (err) {
-        if (closeTimer) clearTimeout(closeTimer);
         error = err instanceof Error ? err.message : String(err);
       }
 
@@ -115,15 +93,10 @@ const getAvailableChatGroups = () => {
 
 const initMessageFlow = () => {
   messageFlow = createMessageFlow({
-    getRouterState: () => routerStateRepo.get(),
+    getLastAgentTimestamps: () => routerStateRepo.get()?.lastAgentTimestamp ?? {},
     getRegisteredGroups: () => groupsRepo.getAllAsRecord(),
-    getRegisteredGroupsJids: () => groupsRepo.getAllJids(),
     getMessagesSince: (jid, since) => messagesRepo.getSince(jid, since),
-    getNewMessagesSince: (jids, since) => messagesRepo.getNewSince(jids, since),
-    getFormattedMessagesFor: (messages) => formatMessages(messages),
-    saveRouterState: (state) => routerStateRepo.set(state),
     deliver: (jid, groupFolder, prompt) => groupQueue.deliver(jid, groupFolder, prompt),
-    setTypingForChannel: (jid) => channelsRegistry.findChannel(jid)?.setTyping(jid),
   });
 };
 
@@ -171,38 +144,16 @@ const initMain = () => {
         return;
       }
 
-      let idleTimer: ReturnType<typeof setTimeout> | null = null;
-      const resetIdleTimer = () => {
-        if (idleTimer) clearTimeout(idleTimer);
-        idleTimer = setTimeout(() => {
-          logger.debug({ groupFolder }, 'Idle timeout, closing container stdin');
-          groupQueue.closeStdin(jid);
-        }, IDLE_TIMEOUT);
-      };
-
       taskFlow.onTasksChangedFor(group);
       agentFlow.writeAvailableGroupsIn(group.folder, getAvailableChatGroups(), group.isMain);
 
       await runAgent(
         { prompt, groupFolder, chatJid: jid, isMain: group.isMain },
         (proc, containerName) => groupQueue.registerProcess(jid, proc, containerName, group.folder),
-        async (containerOutput) => {
-          if (containerOutput.result) {
-            const raw = typeof containerOutput.result === 'string' ? containerOutput.result : JSON.stringify(containerOutput.result);
-            const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
-            logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
-            if (text) {
-              await (channelsRegistry.findChannel(jid)?.sendMessage(jid, text) ?? Promise.resolve());
-            }
-            resetIdleTimer();
-          }
-          if (containerOutput.status === 'success') {
-            groupQueue.notifyIdle(jid);
-          }
+        async (text) => {
+          await (channelsRegistry.findChannel(jid)?.sendMessage(jid, text) ?? Promise.resolve());
         },
       );
-
-      if (idleTimer) clearTimeout(idleTimer);
     },
   });
   initAgentFlow();
@@ -226,7 +177,12 @@ const registerCleanupHandlers = () => {
 const registerChannels = async () => {
   const telegramOps: TelegramChannelOpts = createTelegramChannelOpts({
     type: 'telegram',
-    onInboundMessage: (message) => messagesRepo.save(message),
+    onInboundMessage: (message, group) => {
+      messagesRepo.save(message);
+      const prompt = formatMessages([message]);
+      groupQueue.deliver(message.chatJid, group.folder, prompt);
+      channelsRegistry.findChannel(message.chatJid)?.setTyping(message.chatJid);
+    },
     onChatMetadata: (chatJid, timestamp, name, isGroup) => {
       chatsRepo.saveChat(chatJid, {
         timestamp,
@@ -250,6 +206,5 @@ export const main = async () => {
 
   ipcHandler.start();
   messageFlow.enqueuePreviousSessionLostMessages();
-  messageFlow.startMessagesWatcher();
   taskFlow.startSchedulerLoop();
 };

@@ -16,11 +16,6 @@ vi.mock('../../config.js', () => ({
   TIMEZONE: 'UTC',
 }));
 
-vi.mock('../../container-runner.js', () => ({
-  writeGroupsSnapshot: vi.fn(),
-  writeTasksSnapshot: vi.fn(),
-}));
-
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
   return { ...actual, default: { ...actual, mkdirSync: vi.fn(), existsSync: vi.fn(() => false), copyFileSync: vi.fn() } };
