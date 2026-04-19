@@ -15,6 +15,7 @@ const http = require('http');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
 const os = require('os');
+const fs = require('fs');
 
 const PORT = parseInt(process.env.BRIDGE_PORT || '3737', 10);
 const SECRET = process.env.BRIDGE_SECRET;
@@ -45,10 +46,37 @@ async function handleRequest(req, res) {
   try { payload = JSON.parse(body); }
   catch { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid JSON' })); return; }
 
-  const { type, command, script, action } = payload;
+  const { type, command, script, action, path: filePath, content, encoding } = payload;
   try {
     let stdout = '';
-    if (type === 'shell') {
+    if (type === 'read') {
+      if (!filePath) throw new Error('path is required for type=read');
+      const resolved = filePath.replace(/^~/, os.homedir());
+      const data = fs.readFileSync(resolved, { encoding: encoding || 'utf8' });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, content: data, stderr: '' }));
+      return;
+    } else if (type === 'write') {
+      if (!filePath) throw new Error('path is required for type=write');
+      if (content === undefined) throw new Error('content is required for type=write');
+      const resolved = filePath.replace(/^~/, os.homedir());
+      fs.mkdirSync(require('path').dirname(resolved), { recursive: true });
+      fs.writeFileSync(resolved, content, { encoding: encoding || 'utf8' });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, stdout: `Written ${content.length} bytes to ${resolved}`, stderr: '' }));
+      return;
+    } else if (type === 'ls') {
+      if (!filePath) throw new Error('path is required for type=ls');
+      const resolved = filePath.replace(/^~/, os.homedir());
+      const entries = fs.readdirSync(resolved, { withFileTypes: true });
+      const result = entries.map(e => ({
+        name: e.name,
+        type: e.isDirectory() ? 'dir' : e.isFile() ? 'file' : 'other',
+      }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, entries: result, stderr: '' }));
+      return;
+    } else if (type === 'shell') {
       if (!command) throw new Error('command is required for type=shell');
       stdout = execSync(command, { encoding: 'utf8', timeout: 30000, shell: '/bin/zsh',
         env: { ...process.env, HOME: os.homedir() }, stdio: ['ignore', 'pipe', 'pipe'] }) || '';
@@ -69,7 +97,7 @@ async function handleRequest(req, res) {
         throw new Error(`Unknown system action: ${action}. Valid: ${Object.keys(actions).join(', ')}`);
       stdout = execSync(actions[action], { encoding: 'utf8', timeout: 10000 });
     } else {
-      throw new Error(`Unknown type: ${type}. Valid: shell, applescript, system`);
+      throw new Error(`Unknown type: ${type}. Valid: shell, applescript, system, read, write, ls`);
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, stdout: stdout.trim(), stderr: '' }));
