@@ -21,17 +21,8 @@ export interface ChannelOpts {
    */
   onInboundMessage: (message: Message, group: RegisteredGroup) => void;
 
-  /**
-   * Callback for delivering discovered chat metadata (e.g. JID, name) to the core. Called during initial sync and when new chats are detected.
-   *
-   * @param chatJid
-   * @param timestamp
-   * @param name is optional — channels that deliver names inline (Telegram) pass it here; channels that sync names separately (via syncGroups) omit it.
-   * @param channel
-   * @param isGroup
-   */
-  onChatMetadata: (chatJid: string, timestamp: string, name: string, isGroup: boolean) => void;
   getRegisteredGroups: () => Record<string, RegisteredGroup>;
+  registerNewGroup: (jid: string, group: RegisteredGroup) => void;
 }
 
 export interface Channel {

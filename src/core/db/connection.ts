@@ -6,16 +6,13 @@ import { STORE_DIR } from '../../config.js';
 import { logger } from '../../logger.js';
 
 import { createSchema } from './schema.js';
-import { createChatsLocalResource } from './resources/chats.js';
 import { createTasksLocalResource } from './resources/tasks.js';
 import { createGroupsLocalResource } from './resources/groups.js';
 
-import type { ChatsLocalResource } from './resources/chats.js';
 import type { TasksLocalResource } from './resources/tasks.js';
 import type { GroupsLocalResource } from './resources/groups.js';
 
 export interface LocalResource {
-  chats: ChatsLocalResource;
   tasks: TasksLocalResource;
   groups: GroupsLocalResource;
   close(): void;
@@ -25,7 +22,6 @@ function createLocalResource(db: Database.Database): LocalResource {
   createSchema(db);
 
   return {
-    chats: createChatsLocalResource(db),
     tasks: createTasksLocalResource(db),
     groups: createGroupsLocalResource(db),
     close: () => db.close(),

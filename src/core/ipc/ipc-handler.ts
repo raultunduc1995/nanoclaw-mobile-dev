@@ -6,7 +6,9 @@ import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from '../../config.js';
 import { logger } from '../../logger.js';
 
 import { ipcTaskSchema, ipcMessageSchema, type IpcTaskData, type IpcMessageData } from './types.js';
-import type { AvailableGroup, NewScheduledTask, RegisteredGroup, ScheduledTask } from '../repositories/index.js';
+import type { NewScheduledTask, RegisteredGroup, ScheduledTask } from '../repositories/index.js';
+
+type AvailableGroup = { jid: string; name: string; lastActivity: string; isRegistered: boolean };
 import { ZodSafeParseResult } from 'zod';
 
 export interface IpcHandlerDeps {

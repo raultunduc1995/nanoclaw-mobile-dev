@@ -1,28 +1,20 @@
 import { logger } from '../logger.js';
 import { GroupQueue } from './group-queue.js';
 
-import channelsRegistry, { createTelegramChannelOpts, type TelegramChannelOpts } from './channels/index.js';
+import channelsRegistry, { type TelegramChannelOpts } from './channels/index.js';
 import { initLocalDatabase } from './db/index.js';
-import { createChatsRepository, createGroupsRepository, createTasksRepository, type GroupsRepository, type ChatsRepository, type TasksRepository } from './repositories/index.js';
-import { createAgentFlow, type AgentFlow } from './flows/index.js';
+import { createGroupsRepository, createTasksRepository, type GroupsRepository, type TasksRepository } from './repositories/index.js';
 import { formatMessages } from './utils/index.js';
 import { runBee } from '../bee/index.js';
 
 let groupsRepo: GroupsRepository;
-let chatsRepo: ChatsRepository;
 let tasksRepo: TasksRepository;
-let agentFlow: AgentFlow;
 let groupQueue: GroupQueue;
 
 const initRepos = () => {
   const localResource = initLocalDatabase();
   groupsRepo = createGroupsRepository(localResource.groups);
-  chatsRepo = createChatsRepository(localResource.chats);
   tasksRepo = createTasksRepository(localResource.tasks);
-};
-
-const initAgentFlow = () => {
-  agentFlow = createAgentFlow();
 };
 
 // const initTaskFlow = () => {
@@ -58,19 +50,6 @@ const initAgentFlow = () => {
 //     },
 //   });
 // };
-
-// cross-repo query. It doesn't belong anywhere...
-const getAvailableChatGroups = () => {
-  const chats = chatsRepo.getGroupChats();
-  const registeredJids = groupsRepo.getAllJids();
-
-  return chats.map((c) => ({
-    jid: c.jid,
-    name: c.name,
-    lastActivity: c.lastMessageTime,
-    isRegistered: registeredJids.has(c.jid),
-  }));
-};
 
 // const initIpcHandler = () => {
 //   ipcHandler = createIpcHandler({
@@ -111,7 +90,6 @@ const initMain = () => {
   groupQueue = new GroupQueue({
     runAgent: (jid, group, prompt) => {
       // taskFlow.onTasksChangedFor(group);
-      agentFlow.writeAvailableGroupsIn(group.folder, getAvailableChatGroups(), group.isMain);
       return runBee(
         { prompt, groupFolder: group.folder, chatJid: jid, isMain: group.isMain, sessionId: group.sessionId },
         async (output) => {
@@ -167,7 +145,6 @@ const initMain = () => {
       // );
     },
   });
-  initAgentFlow();
   // initTaskFlow();
   // initIpcHandler();
 };
@@ -185,24 +162,16 @@ const registerCleanupHandlers = () => {
 };
 
 const registerChannels = async () => {
-  const telegramOps: TelegramChannelOpts = createTelegramChannelOpts({
+  const telegramOps: TelegramChannelOpts = {
     type: 'telegram',
     onInboundMessage: (message, group) => {
       const prompt = formatMessages([message]);
       channelsRegistry.findChannel(message.chatJid)?.setTyping(message.chatJid);
       groupQueue.deliver(message.chatJid, group, prompt);
     },
-    onChatMetadata: (chatJid, timestamp, name, isGroup) => {
-      chatsRepo.saveChat(chatJid, {
-        timestamp,
-        name,
-        channel: 'telegram',
-        isGroup,
-      });
-    },
     getRegisteredGroups: () => groupsRepo.getAllAsRecord(),
     registerNewGroup: (jid, group) => groupsRepo.register(jid, group),
-  });
+  };
 
   channelsRegistry.registerTelegramChannel(telegramOps);
   await channelsRegistry.connectAll();

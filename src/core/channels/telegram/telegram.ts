@@ -2,25 +2,13 @@ import https from 'https';
 
 import { Api, Bot, BotError } from 'grammy';
 
-import { readEnvFile } from '../../../env.js';
 import { logger } from '../../../logger.js';
 import type { ChannelOpts, Channel } from '../types.js';
+import { TELEGRAM_BOT_TOKEN } from '../../../config.js';
 
 export interface TelegramChannelOpts extends ChannelOpts {
   type: 'telegram';
-  botToken: string;
 }
-
-export const createTelegramChannelOpts = (opts: ChannelOpts): TelegramChannelOpts => {
-  const envVars = readEnvFile(['TELEGRAM_BOT_TOKEN']);
-  const token = process.env.TELEGRAM_BOT_TOKEN || envVars.TELEGRAM_BOT_TOKEN || undefined;
-  if (!token) {
-    logger.warn('Telegram: TELEGRAM_BOT_TOKEN not set');
-    throw new Error(`Telegram: TELEGRAM_BOT_TOKEN not set`);
-  }
-
-  return { ...opts, type: 'telegram', botToken: token };
-};
 
 export class TelegramChannel implements Channel {
   name = 'telegram';
@@ -30,7 +18,7 @@ export class TelegramChannel implements Channel {
 
   constructor(opts: TelegramChannelOpts) {
     this.opts = opts;
-    this.bot = new Bot(this.opts.botToken, {
+    this.bot = new Bot(TELEGRAM_BOT_TOKEN, {
       client: {
         baseFetchConfig: { agent: https.globalAgent, compress: true },
       },
@@ -44,6 +32,8 @@ export class TelegramChannel implements Channel {
       const chatType = ctx.chat.type;
       const chatName = chatType === 'private' ? ctx.from?.first_name || 'Private' : 'title' in ctx.chat ? ctx.chat.title || 'Unknown' : 'Unknown';
       ctx.reply(`Chat ID: \`tg:${chatId}\`\nName: ${chatName}\nType: ${chatType}`, { parse_mode: 'Markdown' });
+      // Auto-registration disabled — use the setup flow to register chats explicitly
+      // this.opts.registerNewGroup(`tg:${chatId}`, { name: chatName, folder: `telegram-${chatName}`, addedAt: new Date().toISOString(), isMain: false, sessionId: '' });
     });
 
     this.bot.on('message:text', async (ctx) => {
@@ -67,10 +57,6 @@ export class TelegramChannel implements Channel {
       // Determine chat name
       const chatName = ctx.chat.type === 'private' ? senderName || 'Private' : 'title' in ctx.chat ? ctx.chat.title || chatJid : chatJid;
 
-      // Store chat metadata for discovery
-      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
-      this.opts.onChatMetadata(chatJid, timestamp, chatName, isGroup);
-
       // Only deliver full message for registered groups
       const group = this.opts.getRegisteredGroups()[chatJid];
       if (!group) {
@@ -79,17 +65,20 @@ export class TelegramChannel implements Channel {
       }
 
       // Deliver message — startMessageLoop() will pick it up
-      this.opts.onInboundMessage({
-        id: msgId,
-        chatJid,
-        sender,
-        senderName,
-        content,
-        timestamp,
-        replyToMessageId,
-        replyToMessageContent,
-        replyToSenderName,
-      }, group);
+      this.opts.onInboundMessage(
+        {
+          id: msgId,
+          chatJid,
+          sender,
+          senderName,
+          content,
+          timestamp,
+          replyToMessageId,
+          replyToMessageContent,
+          replyToSenderName,
+        },
+        group,
+      );
       logger.info({ chatJid, chatName, sender: senderName }, 'Telegram message stored');
     });
 

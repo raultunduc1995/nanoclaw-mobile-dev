@@ -2,14 +2,6 @@ import type Database from 'better-sqlite3';
 
 export const createSchema = (database: Database.Database): void => {
   database.exec(`
-    CREATE TABLE IF NOT EXISTS chats (
-      jid TEXT PRIMARY KEY,
-      name TEXT,
-      last_message_time TEXT,
-      channel TEXT,
-      is_group INTEGER DEFAULT 0
-    );
-
     CREATE TABLE IF NOT EXISTS scheduled_tasks (
       id TEXT PRIMARY KEY,
       group_folder TEXT NOT NULL,

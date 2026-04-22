@@ -1,7 +1,5 @@
-export type { ChatsRepository, ChatInfo, AvailableGroup } from './chats-repository.js';
 export type { GroupsRepository, RegisteredGroup, ContainerConfig, AdditionalMount } from './groups-repository.js';
 export type { TasksRepository, NewScheduledTask, ScheduledTask } from './tasks-repository.js';
 
-export { createChatsRepository } from './chats-repository.js';
 export { createGroupsRepository } from './groups-repository.js';
 export { createTasksRepository } from './tasks-repository.js';

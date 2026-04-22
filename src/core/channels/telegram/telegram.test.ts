@@ -71,9 +71,8 @@ import { TelegramChannel, TelegramChannelOpts } from './telegram.js';
 function createTestOpts(overrides?: Partial<TelegramChannelOpts>): TelegramChannelOpts {
   return {
     type: 'telegram',
-    botToken: 'test-token',
     onInboundMessage: vi.fn(),
-    onChatMetadata: vi.fn(),
+    registerNewGroup: vi.fn(),
     getRegisteredGroups: vi.fn(() => ({
       'tg:100200300': {
         name: 'Test Group',
@@ -190,7 +189,6 @@ describe('TelegramChannel', () => {
       const ctx = createTextCtx({ text: 'Hello everyone' });
       await triggerTextMessage(ctx);
 
-      expect(opts.onChatMetadata).toHaveBeenCalledWith('tg:100200300', expect.any(String), 'Test Group', true);
       expect(opts.onInboundMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           id: '1',
@@ -203,7 +201,7 @@ describe('TelegramChannel', () => {
       );
     });
 
-    it('only emits metadata for unregistered chats', async () => {
+    it('does not deliver messages from unregistered chats', async () => {
       const opts = createTestOpts();
       const channel = new TelegramChannel(opts);
       await channel.connect();
@@ -211,7 +209,6 @@ describe('TelegramChannel', () => {
       const ctx = createTextCtx({ chatId: 999999, text: 'Unknown chat' });
       await triggerTextMessage(ctx);
 
-      expect(opts.onChatMetadata).toHaveBeenCalledWith('tg:999999', expect.any(String), 'Test Group', true);
       expect(opts.onInboundMessage).not.toHaveBeenCalled();
     });
 
@@ -224,7 +221,6 @@ describe('TelegramChannel', () => {
       const ctx1 = createTextCtx({ text: '/chatid' });
       await triggerTextMessage(ctx1);
       expect(opts.onInboundMessage).not.toHaveBeenCalled();
-      expect(opts.onChatMetadata).not.toHaveBeenCalled();
 
       // Non-bot /commands should flow through
       const ctx2 = createTextCtx({ text: '/remote-control' });
@@ -299,11 +295,9 @@ describe('TelegramChannel', () => {
       });
       await triggerTextMessage(ctx);
 
-      expect(opts.onChatMetadata).toHaveBeenCalledWith(
-        'tg:100200300',
-        expect.any(String),
-        'Alice', // Private chats use sender name
-        false,
+      expect(opts.onInboundMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ chatJid: 'tg:100200300' }),
+        expect.anything(),
       );
     });
 
@@ -319,7 +313,10 @@ describe('TelegramChannel', () => {
       });
       await triggerTextMessage(ctx);
 
-      expect(opts.onChatMetadata).toHaveBeenCalledWith('tg:100200300', expect.any(String), 'Project Team', true);
+      expect(opts.onInboundMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ chatJid: 'tg:100200300' }),
+        expect.anything(),
+      );
     });
 
     it('converts message.date to ISO timestamp', async () => {
