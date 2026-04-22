@@ -62,12 +62,15 @@ const getMainOptions = (agentInput: AgentInput): Options => {
     cwd: groupDir,
     env: sdkEnv,
     additionalDirectories: ['/'],
-    permissionMode: 'bypassPermissions',
     allowDangerouslySkipPermissions: true,
-    allowedTools: ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch', 'ToolSearch', 'Agent', 'Skill', 'AskUserQuestion', 'TodoWrite'],
     settingSources: ['project'],
     debug: true,
-    // mcpServers: getMcpServers(),
+    mcpServers: {
+      playwright: {
+        command: 'node',
+        args: [path.join(GROUPS_DIR, '..', 'node_modules/@playwright/mcp/cli.js')],
+      },
+    },
   };
 };
 
@@ -98,7 +101,7 @@ const getDefaultOptions = (agentInput: AgentInput): Options => {
     allowDangerouslySkipPermissions: true,
     disallowedTools: ['Bash'],
     settingSources: ['project'],
-    // mcpServers: getMcpServers(),
+    mcpServers: {},
   };
 };
 
