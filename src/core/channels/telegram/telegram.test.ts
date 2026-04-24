@@ -226,9 +226,7 @@ describe('TelegramChannel', () => {
       const ctx2 = createTextCtx({ text: '/remote-control' });
       await triggerTextMessage(ctx2);
       expect(opts.onInboundMessage).toHaveBeenCalledTimes(1);
-      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ content: '/remote-control' }),
-        expect.anything(),
-      );
+      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ content: '/remote-control' }), expect.anything());
     });
 
     it('extracts sender name from first_name', async () => {
@@ -239,9 +237,7 @@ describe('TelegramChannel', () => {
       const ctx = createTextCtx({ text: 'Hi', firstName: 'Bob' });
       await triggerTextMessage(ctx);
 
-      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ senderName: 'Bob' }),
-        expect.anything(),
-      );
+      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ senderName: 'Bob' }), expect.anything());
     });
 
     it('falls back to username when first_name missing', async () => {
@@ -253,9 +249,7 @@ describe('TelegramChannel', () => {
       ctx.from.first_name = undefined as any;
       await triggerTextMessage(ctx);
 
-      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ senderName: 'alice_user' }),
-        expect.anything(),
-      );
+      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ senderName: 'alice_user' }), expect.anything());
     });
 
     it('falls back to user ID when name and username missing', async () => {
@@ -268,9 +262,7 @@ describe('TelegramChannel', () => {
       ctx.from.username = undefined as any;
       await triggerTextMessage(ctx);
 
-      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ senderName: '42' }),
-        expect.anything(),
-      );
+      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ senderName: '42' }), expect.anything());
     });
 
     it('uses sender name as chat name for private chats', async () => {
@@ -295,10 +287,7 @@ describe('TelegramChannel', () => {
       });
       await triggerTextMessage(ctx);
 
-      expect(opts.onInboundMessage).toHaveBeenCalledWith(
-        expect.objectContaining({ chatJid: 'tg:100200300' }),
-        expect.anything(),
-      );
+      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ chatJid: 'tg:100200300' }), expect.anything());
     });
 
     it('uses chat title as name for group chats', async () => {
@@ -313,10 +302,7 @@ describe('TelegramChannel', () => {
       });
       await triggerTextMessage(ctx);
 
-      expect(opts.onInboundMessage).toHaveBeenCalledWith(
-        expect.objectContaining({ chatJid: 'tg:100200300' }),
-        expect.anything(),
-      );
+      expect(opts.onInboundMessage).toHaveBeenCalledWith(expect.objectContaining({ chatJid: 'tg:100200300' }), expect.anything());
     });
 
     it('converts message.date to ISO timestamp', async () => {

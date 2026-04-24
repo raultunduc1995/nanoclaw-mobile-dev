@@ -286,7 +286,7 @@ const createTasksIpcHandler = (
 
 const ipcBaseDir = path.join(DATA_DIR, 'ipc');
 
-type PathGoupFile = { filePath: string, groupFolder: string, file: string };
+type PathGoupFile = { filePath: string; groupFolder: string; file: string };
 const extractMessageDataFromFile = ({ filePath, groupFolder, file }: PathGoupFile) => extractDataFromFile(filePath, groupFolder, file, ipcMessageSchema.safeParse);
 const extractTaskDataFromFile = ({ filePath, groupFolder, file }: PathGoupFile) => extractDataFromFile(filePath, groupFolder, file, ipcTaskSchema.safeParse);
 const extractDataFromFile = <T>(filePath: string, groupFolder: string, file: string, safeParse: (raw: any) => ZodSafeParseResult<T>) => {

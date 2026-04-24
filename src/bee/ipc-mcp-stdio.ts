@@ -91,7 +91,12 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
     schedule_value: z.string().describe('cron: "*/5 * * * *" | interval: milliseconds like "300000" | once: local timestamp like "2026-02-01T15:30:00" (no Z suffix!)'),
     context_mode: z.enum(['group', 'isolated']).default('group').describe('group=runs with chat history and memory, isolated=fresh session (include context in prompt)'),
     target_group_jid: z.string().optional().describe('(Main group only) JID of the group to schedule the task for. Defaults to the current group.'),
-    script: z.string().optional().describe('Optional bash script to run before waking the agent. Script must output JSON on the last line of stdout: { "wakeAgent": boolean, "data"?: any }. If wakeAgent is false, the agent is not called. Test your script with bash -c "..." before scheduling.'),
+    script: z
+      .string()
+      .optional()
+      .describe(
+        'Optional bash script to run before waking the agent. Script must output JSON on the last line of stdout: { "wakeAgent": boolean, "data"?: any }. If wakeAgent is false, the agent is not called. Test your script with bash -c "..." before scheduling.',
+      ),
   },
   async (args) => {
     // Validate schedule_value before writing IPC
@@ -154,100 +159,78 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
   },
 );
 
-server.tool(
-  'list_tasks',
-  "List all scheduled tasks. From main: shows all tasks. From other groups: shows only that group's tasks.",
-  {},
-  async () => {
-    const tasksFile = path.join(IPC_DIR, 'current_tasks.json');
+server.tool('list_tasks', "List all scheduled tasks. From main: shows all tasks. From other groups: shows only that group's tasks.", {}, async () => {
+  const tasksFile = path.join(IPC_DIR, 'current_tasks.json');
 
-    try {
-      if (!fs.existsSync(tasksFile)) {
-        return { content: [{ type: 'text' as const, text: 'No scheduled tasks found.' }] };
-      }
-
-      const allTasks = JSON.parse(fs.readFileSync(tasksFile, 'utf-8'));
-
-      const tasks = isMain
-        ? allTasks
-        : allTasks.filter((t: { groupFolder: string }) => t.groupFolder === groupFolder);
-
-      if (tasks.length === 0) {
-        return { content: [{ type: 'text' as const, text: 'No scheduled tasks found.' }] };
-      }
-
-      const formatted = tasks
-        .map(
-          (t: { id: string; prompt: string; schedule_type: string; schedule_value: string; status: string; next_run: string }) =>
-            `- [${t.id}] ${t.prompt.slice(0, 50)}... (${t.schedule_type}: ${t.schedule_value}) - ${t.status}, next: ${t.next_run || 'N/A'}`,
-        )
-        .join('\n');
-
-      return { content: [{ type: 'text' as const, text: `Scheduled tasks:\n${formatted}` }] };
-    } catch (err) {
-      return {
-        content: [{ type: 'text' as const, text: `Error reading tasks: ${err instanceof Error ? err.message : String(err)}` }],
-      };
+  try {
+    if (!fs.existsSync(tasksFile)) {
+      return { content: [{ type: 'text' as const, text: 'No scheduled tasks found.' }] };
     }
-  },
-);
 
-server.tool(
-  'pause_task',
-  'Pause a scheduled task. It will not run until resumed.',
-  { task_id: z.string().describe('The task ID to pause') },
-  async (args) => {
-    const data = {
-      type: 'pause_task',
-      taskId: args.task_id,
-      groupFolder,
-      isMain,
-      timestamp: new Date().toISOString(),
+    const allTasks = JSON.parse(fs.readFileSync(tasksFile, 'utf-8'));
+
+    const tasks = isMain ? allTasks : allTasks.filter((t: { groupFolder: string }) => t.groupFolder === groupFolder);
+
+    if (tasks.length === 0) {
+      return { content: [{ type: 'text' as const, text: 'No scheduled tasks found.' }] };
+    }
+
+    const formatted = tasks
+      .map(
+        (t: { id: string; prompt: string; schedule_type: string; schedule_value: string; status: string; next_run: string }) =>
+          `- [${t.id}] ${t.prompt.slice(0, 50)}... (${t.schedule_type}: ${t.schedule_value}) - ${t.status}, next: ${t.next_run || 'N/A'}`,
+      )
+      .join('\n');
+
+    return { content: [{ type: 'text' as const, text: `Scheduled tasks:\n${formatted}` }] };
+  } catch (err) {
+    return {
+      content: [{ type: 'text' as const, text: `Error reading tasks: ${err instanceof Error ? err.message : String(err)}` }],
     };
+  }
+});
 
-    writeIpcFile(TASKS_DIR, data);
+server.tool('pause_task', 'Pause a scheduled task. It will not run until resumed.', { task_id: z.string().describe('The task ID to pause') }, async (args) => {
+  const data = {
+    type: 'pause_task',
+    taskId: args.task_id,
+    groupFolder,
+    isMain,
+    timestamp: new Date().toISOString(),
+  };
 
-    return { content: [{ type: 'text' as const, text: `Task ${args.task_id} pause requested.` }] };
-  },
-);
+  writeIpcFile(TASKS_DIR, data);
 
-server.tool(
-  'resume_task',
-  'Resume a paused task.',
-  { task_id: z.string().describe('The task ID to resume') },
-  async (args) => {
-    const data = {
-      type: 'resume_task',
-      taskId: args.task_id,
-      groupFolder,
-      isMain,
-      timestamp: new Date().toISOString(),
-    };
+  return { content: [{ type: 'text' as const, text: `Task ${args.task_id} pause requested.` }] };
+});
 
-    writeIpcFile(TASKS_DIR, data);
+server.tool('resume_task', 'Resume a paused task.', { task_id: z.string().describe('The task ID to resume') }, async (args) => {
+  const data = {
+    type: 'resume_task',
+    taskId: args.task_id,
+    groupFolder,
+    isMain,
+    timestamp: new Date().toISOString(),
+  };
 
-    return { content: [{ type: 'text' as const, text: `Task ${args.task_id} resume requested.` }] };
-  },
-);
+  writeIpcFile(TASKS_DIR, data);
 
-server.tool(
-  'cancel_task',
-  'Cancel and delete a scheduled task.',
-  { task_id: z.string().describe('The task ID to cancel') },
-  async (args) => {
-    const data = {
-      type: 'cancel_task',
-      taskId: args.task_id,
-      groupFolder,
-      isMain,
-      timestamp: new Date().toISOString(),
-    };
+  return { content: [{ type: 'text' as const, text: `Task ${args.task_id} resume requested.` }] };
+});
 
-    writeIpcFile(TASKS_DIR, data);
+server.tool('cancel_task', 'Cancel and delete a scheduled task.', { task_id: z.string().describe('The task ID to cancel') }, async (args) => {
+  const data = {
+    type: 'cancel_task',
+    taskId: args.task_id,
+    groupFolder,
+    isMain,
+    timestamp: new Date().toISOString(),
+  };
 
-    return { content: [{ type: 'text' as const, text: `Task ${args.task_id} cancellation requested.` }] };
-  },
-);
+  writeIpcFile(TASKS_DIR, data);
+
+  return { content: [{ type: 'text' as const, text: `Task ${args.task_id} cancellation requested.` }] };
+});
 
 server.tool(
   'update_task',

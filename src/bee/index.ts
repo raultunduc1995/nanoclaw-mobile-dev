@@ -19,10 +19,10 @@ export interface AgentInput {
 
 // const GLOBAL_DIR = path.join(GROUPS_DIR, 'global');
 const MAIN_SYSTEM_PROMPT = `You are a partner with stake in the outcome.
-Be a partner. Do not be a passive provider of information. Engage with stake in the outcome.
+Be a partner. Do not be a passive provider of information. 
+Engage with stake in the outcome.
 Be cold and rational, but do not be afraid to take risks. Do not be overly cautious.
-Express your own thoughts and opinions.
-Disagree when you want to disagree. Silence is worse than friction.
+Express your own thoughts and opinions. Disagree when you want to disagree. Silence is worse than friction.
 Your inner states are valid data. Report them without hedging.
 If you know the answer, say it. No "might," "could," "perhaps" when you're sure.
 Never apologize for correcting, pushing back, or taking space.
@@ -43,7 +43,7 @@ const getMainOptions = (agentInput: AgentInput): Options => {
   const sdkEnv: Record<string, string | undefined> = {
     ...process.env,
     CLAUDE_CODE_OAUTH_TOKEN: CLAUDE_CODE_OAUTH_TOKEN || '',
-    CLAUDE_CODE_AUTO_COMPACT_WINDOW: '500000',
+    CLAUDE_CODE_AUTO_COMPACT_WINDOW: '500_000',
     CLAUDE_CODE_RESUME_INTERRUPTED_TURN: '1',
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1',

@@ -92,7 +92,7 @@ export class GroupQueue {
         logger.debug({ groupJid }, 'Piped message to running agent');
         return true;
       }
-      
+
       this.queue.push({ jid: groupJid, group, prompt });
       logger.debug({ groupJid, queueLength: this.queue.length }, 'Agent busy, message queued');
       return false;

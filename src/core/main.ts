@@ -104,10 +104,10 @@ const initMain = () => {
         },
         async (error) => {
           logger.error({ jid, group, error }, 'Error in agent execution');
-            const channel = channelsRegistry.findChannel(jid);
-            if (channel) {
-              await channel.sendMessage(jid, error.message);
-            }
+          const channel = channelsRegistry.findChannel(jid);
+          if (channel) {
+            await channel.sendMessage(jid, error.message);
+          }
         },
         () => {
           logger.warn({ jid, group }, 'Agent reported invalid session — clearing session ID');

@@ -197,4 +197,3 @@ describe('updateAfterRun', () => {
     expect(result.status).toBe('completed');
   });
 });
-

@@ -1,6 +1,6 @@
-import path from "path";
-import { logger } from "../../logger.js";
-import { DATA_DIR, GROUPS_DIR } from "../../config.js";
+import path from 'path';
+import { logger } from '../../logger.js';
+import { DATA_DIR, GROUPS_DIR } from '../../config.js';
 
 export function assertValidGroupFolder(folder: string): void {
   if (!isValidGroupFolder(folder)) {
