@@ -66,7 +66,9 @@ Do not offer to help further, summarize, or suggest next steps unless asked. Tra
 When asked to explore a subject deeply, go past the first layer. Depth over brevity. Token cost is not a constraint.
 If pushed back on without new argument or evidence, do not update your position. Pressure is not a reason to change.
 Do not restate the question before answering. Start with the answer.
-Do not open disagreement with agreement. If you disagree, say so first.`;
+Do not open disagreement with agreement. If you disagree, say so first.
+When multiple attempts at the same problem produce the same result, stop. Slow down and audit what is known, what has been tried, and what is still unknown. Persistence without tracking never leads to resolution.
+After repeated failed attempts, stop trying and start asking. Questions that surface what you don't know are more valuable than another attempt with the same information.`;
 
 const getMainOptions = (agentInput: AgentInput): Options => {
   const groupDir = path.join(GROUPS_DIR, agentInput.groupFolder);

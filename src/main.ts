@@ -6,6 +6,7 @@ import { initLocalDatabase } from './core/db/index.js';
 import { createGroupsRepository, type GroupsRepository } from './core/repositories/index.js';
 import { formatMessages } from './core/utils/index.js';
 import { runBee } from './bee/index.js';
+import { startVoiceServer } from './voice/index.js';
 
 let groupsRepo: GroupsRepository;
 let groupQueue: GroupQueue;
@@ -90,8 +91,26 @@ const registerChannels = async () => {
   await channelsRegistry.connectAll();
 };
 
+const startVoice = () => {
+  const voiceJid = process.env.VOICE_JID;
+  if (!voiceJid) {
+    logger.debug('VOICE_JID not set — voice server disabled');
+    return;
+  }
+
+  startVoiceServer((text) => {
+    const group = groupsRepo.getByJid(voiceJid);
+    if (!group) {
+      logger.warn({ voiceJid }, 'Voice target group not found');
+      return;
+    }
+    groupQueue.deliver({ kind: 'text', jid: voiceJid, group, prompt: text });
+  });
+};
+
 export const main = async () => {
   initMain();
   registerCleanupHandlers();
   await registerChannels();
+  startVoice();
 };
